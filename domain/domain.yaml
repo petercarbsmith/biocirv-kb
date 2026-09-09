@@ -1,105 +1,63 @@
-# ---------------------------------------------------------------------------
-# The domain profile. This file, the prompts/ folder next to it, and
-# eval_seed_questions.jsonl are the ONLY things you edit to point the kit at
-# a new scientific field. See domain/README.md for a guided walkthrough.
+# Model-drafted ontology, awaiting your review.
 #
-# Written by the sci-rag setup wizard. Re-run it with `sci-rag init`, or just
-# edit this file: it is validated by the same model the kit reads it with.
-# ---------------------------------------------------------------------------
+# The retrieval: and compression: blocks below were carried over from your
+# current domain.yaml untouched. They are tuned numbers an ablation earned,
+# not domain semantics, so nothing here proposes changes to them.
+#
+# The guiding comments from the shipped domain.yaml are not reproduced here.
+# Review this file, then move it over domain.yaml, or re-run with --apply.
 
-name: My Scientific KB
+name: biocirv-kb
 description: A short description of your domain.
 entity_types:
-- name: Feedstock
-  description: A biomass or residue stream (almond prunings, rice straw, walnut shells)
-- name: Crop
-  description: The crop a residue comes from (almonds, rice, grapes)
-- name: Region
-  description: A geographic area (a county, a valley, a state)
-- name: ConversionProcess
-  description: A process turning feedstock into products (gasification, anaerobic digestion,
-    pyrolysis)
-- name: Product
-  description: An output of conversion (renewable diesel, biochar, biogas)
-- name: Property
-  description: A measured characteristic (moisture content, ash content, yield per acre)
+- name: Agriculture
+  description: The practice of farming, including cultivation of the soil for growing crops
+    and rearing animals (crop production, livestock).
+- name: Economic Contribution
+  description: The financial impact of agriculture on the local economy (economic output,
+    employment).
+- name: Biomass
+  description: Organic material used as a fuel or in industrial production (woody biomass,
+    grass biomass).
+- name: Protocol
+  description: A detailed plan of a scientific experiment or procedure (proximate analysis,
+    X-ray fluorescence testing).
+- name: Process
+  description: A series of actions or steps taken in order to achieve a particular end (fermentation,
+    hydrolysis).
 - name: Equipment
-  description: Machinery used in collection or conversion (chippers, balers, digesters)
-- name: Policy
-  description: A regulation, incentive, or standard affecting residue use
-- name: Organization
-  description: An agency, lab, company, or program
+  description: Tools or machinery used in scientific experiments (microbalance, XRF analyzer).
 relation_types:
-- name: PRODUCES
-  description: Source yields target (a crop produces a residue; a process produces a product)
-- name: CONVERTED_BY
-  description: Feedstock is converted by a process
-- name: LOCATED_IN
-  description: Something is grown, collected, or sited in a region
-- name: HAS_PROPERTY
-  description: Feedstock or product has a measured property
-- name: REQUIRES
-  description: A process or activity needs an input, condition, or equipment
-- name: AFFECTS
-  description: A policy, practice, or property influences something
-- name: COMPETES_WITH
-  description: Two uses or pathways compete for the same resource
+- name: CONTRIBUTES_TO
+  description: An entity contributes to an economic outcome or process.
+- name: SUPPORTED_BY
+  description: A process or outcome is supported by a specific entity or factor.
+- name: USES
+  description: A process or protocol uses specific equipment or materials.
+- name: CONDUCTED_BY
+  description: A protocol or study is conducted by a specific organization or individual.
 query_classes:
-- name: availability
+- name: economic_impact
   keywords:
-  - availability
-  - supply
-  - tons
-  - acreage
-  - yield
-  - county
-  - region
-  - much
-  hyde_instruction: 'Write as a regional biomass resource assessment would: name the region,
-    the crop and residue, and quantitative availability (tons per year, acres, yield per acre).
-
-    '
-- name: properties
+  - economic
+  - contribution
+  - impact
+  hyde_instruction: Write a passage detailing the economic impact of agriculture on a specific
+    region.
+- name: biomass_analysis
   keywords:
-  - moisture
-  - ash
-  - composition
-  - content
-  - heating
-  - density
-  - lignin
-  - cellulose
-  hyde_instruction: 'Write as a feedstock characterization section would: report measured
-    properties with units and typical ranges.
-
-    '
-- name: conversion
+  - biomass
+  - analysis
+  - protocol
+  hyde_instruction: Write a passage describing the analysis process of biomass using specific
+    protocols.
+- name: agricultural_production
   keywords:
-  - conversion
-  - process
-  - digestion
-  - pyrolysis
-  - gasification
-  - fermentation
-  - produce
-  - biofuel
-  hyde_instruction: 'Write as a process description would: name the conversion technology,
-    operating conditions, inputs, and product yields.
-
-    '
-- name: logistics
-  keywords:
-  - collection
-  - transport
-  - storage
-  - cost
-  - baling
-  - chipping
-  - logistics
-  hyde_instruction: 'Write as a supply chain analysis would: describe collection methods,
-    equipment, storage, and costs per ton.
-
-    '
+  - crop
+  - livestock
+  - production
+  hyde_instruction: Write a passage about the production levels of crops or livestock in a
+    specific area.
 retrieval:
   weights:
     vector: 1.5

@@ -1,15 +1,17 @@
-# Your corpus manifest: one JSON object per line, blank and # lines ignored.
-# Only "path" is required; the kit does something sensible with the rest.
+# Model-drafted corpus manifest, awaiting a rights decision.
 #
-# {"path": "data/raw/paper.pdf",
-#  "title": "Exact document title",
-#  "authors": ["Family, Given"],
-#  "year": 2024,
-#  "doi": "10.0000/example",
-#  "journal": "Journal Name",
-#  "url": "https://example.org/paper.pdf",
-#  "license_class": "public",
-#  "source": "my-collection"}
-#
-# license_class controls redistribution. "unknown" is treated as unsafe to
-# redistribute. See "Scope precedes ranking" in docs/methodology.md.
+# Every row says license_class "unknown", and that was not read off the
+# document: this kit never lets a model decide redistribution rights. Where a
+# license sentence was found in the text it is quoted in license_source as
+# evidence only. Read it, decide the class yourself, and edit it in. Until you
+# do, these documents are excluded from scoped retrieval. This keeps undecided
+# rights out of results. See "Scope precedes ranking" in docs/methodology.md.
+{"path": "raw/Crop_Report_Plus-Report-2025.pdf", "title": "Economic Contributions of San Joaquin County Agriculture", "authors": ["Kamaljit Bagri"], "year": 2026, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "county_ag_reports"}
+{"path": "raw/Merced-FINAL-Aug4-WEB-Res.pdf", "title": "Economic Contributions of Merced County Agriculture", "authors": ["Sean Runyon"], "year": 2025, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "county_ag_reports"}
+{"path": "raw/Regional Biomass Valorization and Byproduct Market Assessment - Full Report.pdf", "title": "Regional Biomass Valorization & Byproduct Market Assessment: North San Joaquin Valley (NSJV)", "authors": ["Beau Hoffman"], "year": 2026, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "agency_guidance"}
+{"path": "raw/Stanislaus_cropreport2024.pdf", "title": "2024 Stanislaus County Agricultural Report", "authors": ["Linda Pinfold"], "year": 2024, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "county_ag_reports"}
+{"path": "raw/p1-2-proximate-analysis-biocirv-hd4ib28uf.pdf", "title": "P1.2 Proximate analysis_BioCirV", "authors": ["Xihui Kang"], "year": 2026, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "journal_papers"}
+{"path": "raw/p1-2-x-ray-fluorescence-testing-of-biomass-hh8mb39u7.pdf", "title": "P1.2 X-ray Fluorescence testing of Biomass", "authors": ["James Gardner"], "year": 2026, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "journal_papers"}
+{"path": "raw/p1-3-compositional-analysis-of-biomass-by-moisture-hd4jb28up.pdf", "title": "P1.3 Compositional Analysis of Biomass by Moisture and Ash Determination, Two-Step Sulfuric Acid Hydrolysis, HPLC Sugar Analysis, and Lignin Quantification_BioCirV", "authors": ["Xihui Kang"], "year": 2026, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "journal_papers"}
+{"path": "raw/p2-1-high-throughput-fermentation-screening-aim-2-hhs3b36gp.pdf", "title": "P2.1 High-Throughput Fermentation Screening-Aim 2-BioCirV", "authors": ["Maria F Duran"], "year": 2026, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "journal_papers"}
+{"path": "raw/p2-4-high-throughput-pretreatment-amp-hydrolysis-a-hcpfb2vjp.pdf", "title": "P2.4-High Throughput Pretreatment & Hydrolysis-Aim 2-BioCirV", "authors": ["Venkataramana Pidatala", "Mengziang Lei", "Hemant Choudhary", "Christopher Petzold", "Hector Garcia Martin", "Blake Simmons", "John Gladden", "Alberto Rodriguez", "Anagha Krishnamoorthy"], "year": 2026, "doi": null, "journal": null, "url": null, "license_class": "unknown", "license_source": null, "source": "journal_papers"}

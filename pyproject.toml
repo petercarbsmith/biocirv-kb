@@ -1,5 +1,5 @@
 [project]
-name = "my-scientific-kb"
+name = "biocirv-kb"
 version = "0.5.0"
 description = "A short description of your domain."
 readme = "README.md"
@@ -49,6 +49,7 @@ openai = ["openai>=1.40"]
 # Parquet output for `sci-rag corpus export`. JSONL needs nothing, so this
 # stays optional rather than putting Arrow in every install.
 export = ["pyarrow>=17.0"]
+docling = ["docling>=2.1.0"]
 
 [project.scripts]
 sci-rag = "sci_rag.cli.main:app"
