@@ -1,0 +1,12 @@
+# Ground-truth questions for the evaluation harness (one JSON object per line).
+# Write 10 to 20 questions a domain expert can vouch for. Format:
+#
+# {"id": "unique-slug",
+#  "question": "As a user would ask it",
+#  "reference_answer": "What a correct answer must say",
+#  "reference_titles": ["Exact document title that contains the answer"],
+#  "evidence_phrases": ["a distinctive string from the answering passage", "42.7 g/L"],
+#  "tags": ["your-label"]}
+#
+# Include one question the corpus canNOT answer, tagged "unanswerable",
+# as an honesty probe. See docs/evaluation.md for advice on writing these.

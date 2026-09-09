@@ -1,0 +1,15 @@
+# Your corpus manifest: one JSON object per line, blank and # lines ignored.
+# Only "path" is required; the kit does something sensible with the rest.
+#
+# {"path": "data/raw/paper.pdf",
+#  "title": "Exact document title",
+#  "authors": ["Family, Given"],
+#  "year": 2024,
+#  "doi": "10.0000/example",
+#  "journal": "Journal Name",
+#  "url": "https://example.org/paper.pdf",
+#  "license_class": "public",
+#  "source": "my-collection"}
+#
+# license_class controls redistribution. "unknown" is treated as unsafe to
+# redistribute. See "Scope precedes ranking" in docs/methodology.md.

@@ -1,0 +1,130 @@
+# ---------------------------------------------------------------------------
+# The domain profile. This file, the prompts/ folder next to it, and
+# eval_seed_questions.jsonl are the ONLY things you edit to point the kit at
+# a new scientific field. See domain/README.md for a guided walkthrough.
+#
+# Written by the sci-rag setup wizard. Re-run it with `sci-rag init`, or just
+# edit this file: it is validated by the same model the kit reads it with.
+# ---------------------------------------------------------------------------
+
+name: My Scientific KB
+description: A short description of your domain.
+entity_types:
+- name: Feedstock
+  description: A biomass or residue stream (almond prunings, rice straw, walnut shells)
+- name: Crop
+  description: The crop a residue comes from (almonds, rice, grapes)
+- name: Region
+  description: A geographic area (a county, a valley, a state)
+- name: ConversionProcess
+  description: A process turning feedstock into products (gasification, anaerobic digestion,
+    pyrolysis)
+- name: Product
+  description: An output of conversion (renewable diesel, biochar, biogas)
+- name: Property
+  description: A measured characteristic (moisture content, ash content, yield per acre)
+- name: Equipment
+  description: Machinery used in collection or conversion (chippers, balers, digesters)
+- name: Policy
+  description: A regulation, incentive, or standard affecting residue use
+- name: Organization
+  description: An agency, lab, company, or program
+relation_types:
+- name: PRODUCES
+  description: Source yields target (a crop produces a residue; a process produces a product)
+- name: CONVERTED_BY
+  description: Feedstock is converted by a process
+- name: LOCATED_IN
+  description: Something is grown, collected, or sited in a region
+- name: HAS_PROPERTY
+  description: Feedstock or product has a measured property
+- name: REQUIRES
+  description: A process or activity needs an input, condition, or equipment
+- name: AFFECTS
+  description: A policy, practice, or property influences something
+- name: COMPETES_WITH
+  description: Two uses or pathways compete for the same resource
+query_classes:
+- name: availability
+  keywords:
+  - availability
+  - supply
+  - tons
+  - acreage
+  - yield
+  - county
+  - region
+  - much
+  hyde_instruction: 'Write as a regional biomass resource assessment would: name the region,
+    the crop and residue, and quantitative availability (tons per year, acres, yield per acre).
+
+    '
+- name: properties
+  keywords:
+  - moisture
+  - ash
+  - composition
+  - content
+  - heating
+  - density
+  - lignin
+  - cellulose
+  hyde_instruction: 'Write as a feedstock characterization section would: report measured
+    properties with units and typical ranges.
+
+    '
+- name: conversion
+  keywords:
+  - conversion
+  - process
+  - digestion
+  - pyrolysis
+  - gasification
+  - fermentation
+  - produce
+  - biofuel
+  hyde_instruction: 'Write as a process description would: name the conversion technology,
+    operating conditions, inputs, and product yields.
+
+    '
+- name: logistics
+  keywords:
+  - collection
+  - transport
+  - storage
+  - cost
+  - baling
+  - chipping
+  - logistics
+  hyde_instruction: 'Write as a supply chain analysis would: describe collection methods,
+    equipment, storage, and costs per ton.
+
+    '
+retrieval:
+  weights:
+    vector: 1.5
+    keyword: 1.0
+    graph: 0.8
+    community: 0.6
+    hyde: 1.2
+  rrf_k: 60
+  candidate_limits:
+    vector: 20
+    keyword: 20
+    graph: 20
+    community: 5
+    hyde: 20
+  graph:
+    min_confidence: 0.0
+    confidence_weighted: false
+    include_citations: false
+  reranker:
+    enabled: false
+    adapter: llm
+    pool: 20
+    timeout_s: 15.0
+    model: null
+compression:
+  enabled: false
+  relevance_floor: 0.0
+  max_tokens_per_chunk: 160
