@@ -66,3 +66,6 @@ infra/terraform/**/*.tfvars
 
 # OS noise
 .DS_Store
+
+# Local plans
+local_plans/
