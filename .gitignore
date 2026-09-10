@@ -11,6 +11,8 @@ build/
 .env
 .env.*
 !.env.example
+app/.secrets.toml
+app/.streamlit/secrets.toml
 
 # Test and tool caches
 .pytest_cache/
@@ -66,3 +68,6 @@ infra/terraform/**/*.tfvars
 
 # OS noise
 .DS_Store
+
+# Local plans
+local_plans/
