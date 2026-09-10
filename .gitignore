@@ -11,6 +11,8 @@ build/
 .env
 .env.*
 !.env.example
+app/.secrets.toml
+app/.streamlit/secrets.toml
 
 # Test and tool caches
 .pytest_cache/
