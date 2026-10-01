@@ -37,10 +37,7 @@ except (KeyError, FileNotFoundError):
     API_KEY = os.environ.get("BIOCIRV_API_KEY", "")
 
 if not API_URL or not API_KEY:
-    st.error(
-        "This app is not configured correctly. "
-        "Please contact the BioCirV team to get access."
-    )
+    st.error("This app is not configured correctly. Please contact the BioCirV team to get access.")
     st.stop()
 
 # ---------------------------------------------------------------------------
@@ -99,13 +96,11 @@ _ERROR_MESSAGES = {
 }
 
 _DEGRADED_WARNING = (
-    "Some sources may be missing from this answer. "
-    "Results are still valid but may be incomplete."
+    "Some sources may be missing from this answer. Results are still valid but may be incomplete."
 )
 
 _TIMEOUT_MESSAGE = (
-    "This question took too long to answer. "
-    "Try 'Quick' mode or a more specific question."
+    "This question took too long to answer. Try 'Quick' mode or a more specific question."
 )
 
 _SERVER_ERROR_MESSAGE = (

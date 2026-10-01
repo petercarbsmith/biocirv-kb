@@ -41,6 +41,10 @@ backups/*
 !backups/.gitkeep
 *.dump
 
+# sci-rag corpus export (docs/operations.md). Holds full chunk and document
+# text, same sensitivity as data/raw/. Never commit.
+export/
+
 # Docs site build
 site/
 

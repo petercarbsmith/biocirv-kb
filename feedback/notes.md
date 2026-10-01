@@ -20,11 +20,11 @@ We successfully implemented a standalone Knowledge Base (`biocirv-kb`) containin
 
 ### A. Model Naming Ambiguity (Vertex AI)
 *   **Issue**: `sci-rag-kit` defaults to `gemini-3.6-flash`. This returned a `404 NOT_FOUND` on Vertex AI.
-*   **Lesson**: Institutional GCP projects often have limited access to "preview" or unversioned model aliases. 
+*   **Lesson**: Institutional GCP projects often have limited access to "preview" or unversioned model aliases.
 *   **Fix**: Manually downgraded to `gemini-1.5-flash` in `.env`. The template might benefit from a `sci-rag doctor --probe` that suggests fallback models.
 
 ### B. Network Authorization (CBORG IPv6)
-*   **Issue**: Initial generation calls to CBORG failed with a `403 Permission Denied`. 
+*   **Issue**: Initial generation calls to CBORG failed with a `403 Permission Denied`.
 *   **Root Cause**: The user's terminal was connecting via **IPv6**, but the CBORG portal's "one-click authorization" only whitelisted the **IPv4** address.
 *   **Fix**: Copied the IPv6 address from the `doctor` traceback and manually authorized it on the CBORG portal.
 
