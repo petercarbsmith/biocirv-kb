@@ -14,6 +14,7 @@ from sci_rag.ingest import ingest_entries, load_manifest
 pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).parents[2]
+DEMO_DOMAIN_DIR = Path(__file__).parents[1] / "fixtures" / "demo_domain"
 
 
 async def _stamp_alembic_revision() -> None:
@@ -192,11 +193,19 @@ async def test_doctor_catches_dimension_mismatch(clean_tables, monkeypatch) -> N
         reset_settings_cache()
 
 
-async def test_the_domain_coherence_rows_appear(clean_tables) -> None:  # type: ignore[no-untyped-def]
+async def test_the_domain_coherence_rows_appear(clean_tables, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     """The shipped profile is the reference the new rows are calibrated against."""
     await _stamp_alembic_revision()
 
-    checks = _by_name(await _run_checks(probe=False))
+    from sci_rag.config import reset_settings_cache
+
+    monkeypatch.setenv("SCI_RAG_DOMAIN_DIR", str(DEMO_DOMAIN_DIR))
+    reset_settings_cache()
+    try:
+        checks = _by_name(await _run_checks(probe=False))
+    finally:
+        monkeypatch.delenv("SCI_RAG_DOMAIN_DIR", raising=False)
+        reset_settings_cache()
 
     assert checks["ontology"].status == "ok"
     assert checks["seed coherence"].status == "ok"
@@ -204,14 +213,22 @@ async def test_the_domain_coherence_rows_appear(clean_tables) -> None:  # type: 
 
 
 async def test_ground_truth_is_checked_against_the_ingested_corpus(
-    clean_tables, local_embedder
+    clean_tables, local_embedder, monkeypatch
 ) -> None:  # type: ignore[no-untyped-def]
     """Only meaningful once documents exist, which is why it lives down here."""
     await _stamp_alembic_revision()
     entries = load_manifest(REPO_ROOT / "data" / "demo" / "manifest.jsonl")
     await ingest_entries(entries, embedder=local_embedder)
 
-    checks = _by_name(await _run_checks(probe=False))
+    from sci_rag.config import reset_settings_cache
+
+    monkeypatch.setenv("SCI_RAG_DOMAIN_DIR", str(DEMO_DOMAIN_DIR))
+    reset_settings_cache()
+    try:
+        checks = _by_name(await _run_checks(probe=False))
+    finally:
+        monkeypatch.delenv("SCI_RAG_DOMAIN_DIR", raising=False)
+        reset_settings_cache()
 
     assert checks["ground truth vs corpus"].status == "ok"
 
@@ -235,10 +252,20 @@ async def test_a_reference_title_that_matches_nothing_is_flagged(
     assert "reference title" in checks["ground truth vs corpus"].detail
 
 
-async def test_the_manifest_row_is_absent_without_a_manifest(clean_tables) -> None:  # type: ignore[no-untyped-def]
+async def test_the_manifest_row_is_absent_without_a_manifest(
+    clean_tables, monkeypatch, tmp_path
+) -> None:  # type: ignore[no-untyped-def]
     """A project that ingests by folder never writes one; that is not a finding."""
     await _stamp_alembic_revision()
 
-    checks = _by_name(await _run_checks(probe=False))
+    from sci_rag.config import reset_settings_cache
+
+    monkeypatch.setenv("SCI_RAG_DATA_DIR", str(tmp_path))
+    reset_settings_cache()
+    try:
+        checks = _by_name(await _run_checks(probe=False))
+    finally:
+        monkeypatch.delenv("SCI_RAG_DATA_DIR", raising=False)
+        reset_settings_cache()
 
     assert "manifest" not in checks
