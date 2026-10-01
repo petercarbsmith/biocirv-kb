@@ -1,0 +1,158 @@
+# Publish sci-rag-kit to PyPI on a version tag.
+#
+# Trusted Publishing (OIDC) rather than a long-lived API token: GitHub mints a
+# short-lived credential for this workflow, so there is no secret in the
+# repository to leak or rotate. The PyPI side of that trust has to be
+# configured once by a maintainer; see docs/VERSIONING.md.
+#
+# The tag is the source of truth for the version. `sci-rag-new` fetches the
+# template at the tag matching its own installed version, so a release whose
+# tag and pyproject version disagree would produce projects from the wrong
+# commit. The verify job below refuses that case.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      # A tag can be pushed to any commit, including one that never went
+      # through a pull request. Publishing is irreversible, so confirm the
+      # tagged commit is one CI already passed on.
+      - name: CI is green for the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CONCLUSION=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&status=completed" \
+            --jq '[.workflow_runs[] | .conclusion] | first // "none"')
+          echo "ci conclusion for ${GITHUB_SHA}: $CONCLUSION"
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "::error::the ci workflow has not passed for this commit (got: $CONCLUSION)"
+            exit 1
+          fi
+
+      - name: The tag matches the packaged version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PACKAGED=$(uv run --no-project python -c \
+            "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "tag=$TAG packaged=$PACKAGED"
+          if [ "$TAG" != "$PACKAGED" ]; then
+            echo "::error::tag v$TAG does not match pyproject version $PACKAGED"
+            exit 1
+          fi
+
+      - name: Build the sdist and wheel
+        run: uv build
+
+      # A README that fails to render is the classic way a first release
+      # lands on PyPI looking broken, and the version cannot be reuploaded.
+      - name: The package metadata renders
+        run: uvx twine check --strict dist/*
+
+      - name: The built wheel exposes both entry points
+        run: |
+          uv venv "$RUNNER_TEMP/probe"
+          VIRTUAL_ENV="$RUNNER_TEMP/probe" uv pip install --quiet dist/*.whl
+          "$RUNNER_TEMP/probe/bin/sci-rag" --help > /dev/null
+          "$RUNNER_TEMP/probe/bin/sci-rag-new" --help > /dev/null
+
+      # The generator fetches the template at the tag matching its version, so
+      # a release whose tag is not reachable on GitHub produces nothing.
+      - name: The generator resolves its own tag
+        run: |
+          "$RUNNER_TEMP/probe/bin/python" -c "
+          from sci_rag.scaffold.fetch import tarball_url, template_ref
+          ref = template_ref()
+          print(ref, tarball_url(ref))
+          assert ref == '${GITHUB_REF_NAME}', f'{ref} != ${GITHUB_REF_NAME}'
+          "
+
+      # F-002: published v0.3.0 had no `new` subcommand, so `pipx install
+      # sci-rag-kit` followed by `sci-rag new` (the first two commands in the
+      # README, the homepage, and the quickstart) exited 2 on `No such command
+      # 'new'`. Installing the wheel and running `--help`, which the step above
+      # does, cannot see that: the route breaks at the command the front door
+      # leads with, and `sci-rag new` also fetches the template at its own tag,
+      # which no import check exercises. So the release runs the public pair,
+      # through pipx, from a home that holds nothing.
+      - name: The documented two-command route works from a clean pipx home
+        run: |
+          set -e
+          python -m pip install --quiet --upgrade pipx
+          export PIPX_HOME="$RUNNER_TEMP/pipx-home"
+          export PIPX_BIN_DIR="$RUNNER_TEMP/pipx-bin"
+          pipx install ./dist/*.whl
+          # Ask the CLI whether the subcommand resolves. Typer exits 2 with
+          # "No such command" when it does not, which is F-002's own symptom.
+          # An earlier version grepped the rendered help table for " new " and
+          # failed on a runner with the command present: Rich decides that
+          # layout from terminal detection, so the check was testing the
+          # renderer rather than the CLI.
+          if ! "$PIPX_BIN_DIR/sci-rag" new --help > /dev/null 2>&1; then
+            echo "::error::the published CLI has no 'new' command"
+            "$PIPX_BIN_DIR/sci-rag" --help || true
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/onboarding"
+          cd "$RUNNER_TEMP/onboarding"
+          "$PIPX_BIN_DIR/sci-rag" new --defaults
+          test -f ./*/pyproject.toml
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  # TestPyPI first, always. It is the only way to find a packaging problem
+  # before the version number is burned: PyPI does not allow re-uploading a
+  # version, even a broken one.
+  testpypi:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/sci-rag-kit
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  pypi:
+    needs: testpypi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sci-rag-kit
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
