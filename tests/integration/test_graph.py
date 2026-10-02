@@ -22,7 +22,7 @@ from sci_rag.retrieve import RetrievalScope, Retriever
 
 pytestmark = pytest.mark.integration
 
-DOMAIN_DIR = Path(__file__).parents[2] / "domain"
+DOMAIN_DIR = Path(__file__).parents[1] / "fixtures" / "demo_domain"
 
 EXTRACTION = {
     "entities": [

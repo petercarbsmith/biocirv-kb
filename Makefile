@@ -1,7 +1,7 @@
 # Convenience targets. Everything here is just the underlying command,
 # spelled out; run `make <target>` or copy the command, whichever you like.
 
-.PHONY: setup db-up db-down db-upgrade demo demo-cloud test lint typecheck check serve mcp eval eval-ablation providers-check docs docs-geometry docs-serve docs-reference benchmark benchmark-check benchmark-refresh-graph clean-demo
+.PHONY: setup db-up db-down db-upgrade demo demo-cloud test lint typecheck check serve mcp eval eval-ablation providers-check docs docs-geometry docs-serve docs-reference cast benchmark benchmark-check benchmark-refresh-graph clean-demo
 
 SCI_RAG_DB_BACKEND ?= docker
 
@@ -13,22 +13,26 @@ setup:
 
 db-up:
 
-ifeq ($(SCI_RAG_DB_BACKEND),local)
+ifeq ($(SCI_RAG_DB_BACKEND),cloud)
+	uv run python scripts/cloud_postgres.py start
+else ifeq ($(SCI_RAG_DB_BACKEND),local)
 	uv run python scripts/local_postgres.py start
 else ifeq ($(SCI_RAG_DB_BACKEND),docker)
 	docker compose up -d --wait
 else
-	@echo "Unknown SCI_RAG_DB_BACKEND=$(SCI_RAG_DB_BACKEND); choose docker or local." >&2
+	@echo "Unknown SCI_RAG_DB_BACKEND=$(SCI_RAG_DB_BACKEND); choose docker, local, or cloud." >&2
 	@exit 2
 endif
 
 db-down:
-ifeq ($(SCI_RAG_DB_BACKEND),local)
+ifeq ($(SCI_RAG_DB_BACKEND),cloud)
+	uv run python scripts/cloud_postgres.py stop
+else ifeq ($(SCI_RAG_DB_BACKEND),local)
 	uv run python scripts/local_postgres.py stop
 else ifeq ($(SCI_RAG_DB_BACKEND),docker)
 	docker compose down
 else
-	@echo "Unknown SCI_RAG_DB_BACKEND=$(SCI_RAG_DB_BACKEND); choose docker or local." >&2
+	@echo "Unknown SCI_RAG_DB_BACKEND=$(SCI_RAG_DB_BACKEND); choose docker, local, or cloud." >&2
 	@exit 2
 endif
 
@@ -42,7 +46,7 @@ db-upgrade:
 demo:
 	uv run sci-rag ingest --manifest data/demo/manifest.jsonl
 	uv run sci-rag retrieve "How much rice straw was generated in the Colusa Basin in 2023?" --profile interactive --limit 3
-	uv run sci-rag eval retrieval --questions data/demo/eval_seed_questions.jsonl
+	uv run sci-rag eval retrieval
 	@echo ""
 	@echo "Next: add Google credentials to .env (see .env.example), then run"
 	@echo "'make demo-cloud' for graph extraction, deep retrieval, and answers."
@@ -52,7 +56,7 @@ demo-cloud:
 	uv run sci-rag graph extract
 	uv run sci-rag graph communities
 	uv run sci-rag answer "What conversion route suits rice straw given its ash content, and what yields should I expect?"
-	uv run sci-rag eval retrieval --ablation --questions data/demo/eval_seed_questions.jsonl
+	uv run sci-rag eval retrieval --ablation
 
 test:
 	uv run pytest
@@ -84,6 +88,13 @@ docs-reference:
 	uv run python scripts/render_cli_docs.py --output docs/cli.md
 	uv run python scripts/render_config_docs.py --output docs/configuration.md
 
+## cast: regenerate the homepage sci-rag-new session and its terminal cast.
+## The session is produced by driving the real wizard with a scripted set of
+## answers, not typed by hand, so re-run this whenever the questions change.
+## `make docs` fails if it is stale, so you cannot forget.
+cast:
+	uv run python scripts/render_cast.py
+
 ## providers-check: ask the provider whether the documented partner models still answer.
 ## Needs SCI_RAG_GCP_PROJECT and application-default credentials. Not a CI job:
 ## it calls a model, and a check that always skips is a check nobody reads.
@@ -94,6 +105,7 @@ providers-check:
 docs:
 	uv run python scripts/render_cli_docs.py --check --output docs/cli.md
 	uv run python scripts/render_config_docs.py --check --output docs/configuration.md
+	uv run python scripts/render_cast.py --check
 	uv run mkdocs build --strict
 	test ! -d site/planning
 	test ! -e site/assets/branding/README/index.html
@@ -143,11 +155,11 @@ benchmark: db-up
 		--snapshot "$(BENCH_SNAP)"
 	uv run sci-rag graph communities
 	uv run sci-rag corpus snapshot $(BENCH_SNAP)
-	uv run sci-rag eval retrieval --ablation --snapshot $(BENCH_SNAP) --questions data/demo/eval_seed_questions.jsonl
-	uv run sci-rag eval answers --snapshot $(BENCH_SNAP) --questions data/demo/eval_seed_questions.jsonl
+	uv run sci-rag eval retrieval --ablation --snapshot $(BENCH_SNAP)
+	uv run sci-rag eval answers --snapshot $(BENCH_SNAP)
 	@# The paired half of the compression gate. Both runs are needed: a token
 	@# saving with no quality comparison is not evidence for a default.
-	uv run sci-rag eval answers --compressed --snapshot $(BENCH_SNAP) --questions data/demo/eval_seed_questions.jsonl
+	uv run sci-rag eval answers --compressed --snapshot $(BENCH_SNAP)
 	@# Roles come from each report's own config.compression, not from a
 	@# directory timestamp. Calibration writes into the uncompressed run, so
 	@# an `ls -t` selector reverses the pair right before the page is drawn.

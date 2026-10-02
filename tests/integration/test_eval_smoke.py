@@ -33,6 +33,7 @@ pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).parents[2]
 DOMAIN_DIR = REPO_ROOT / "domain"
+DEMO_SEED_QUESTIONS = REPO_ROOT / "data" / "demo" / "eval_seed_questions.jsonl"
 
 
 class SmokeLLM(LLMClient):
@@ -65,7 +66,7 @@ async def demo_corpus(clean_tables, local_embedder):  # type: ignore[no-untyped-
 
 
 async def test_smoke_retrieval_clears_the_bar(demo_corpus, local_embedder):  # type: ignore[no-untyped-def]
-    questions = load_seed_questions(DOMAIN_DIR / "eval_seed_questions.jsonl")
+    questions = load_seed_questions(DEMO_SEED_QUESTIONS)
     retriever = Retriever(
         domain=load_domain(DOMAIN_DIR),
         embedder=local_embedder,
@@ -80,7 +81,7 @@ async def test_smoke_retrieval_clears_the_bar(demo_corpus, local_embedder):  # t
 
 
 async def test_smoke_ablations_run_every_config(demo_corpus, local_embedder):  # type: ignore[no-untyped-def]
-    questions = load_seed_questions(DOMAIN_DIR / "eval_seed_questions.jsonl")[:4]
+    questions = load_seed_questions(DEMO_SEED_QUESTIONS)[:4]
     retriever = Retriever(
         domain=load_domain(DOMAIN_DIR),
         embedder=local_embedder,
@@ -94,7 +95,7 @@ async def test_smoke_ablations_run_every_config(demo_corpus, local_embedder):  #
 
 
 async def test_smoke_answer_eval_with_blind_judge(demo_corpus, local_embedder, tmp_path):  # type: ignore[no-untyped-def]
-    questions = load_seed_questions(DOMAIN_DIR / "eval_seed_questions.jsonl")[:3]
+    questions = load_seed_questions(DEMO_SEED_QUESTIONS)[:3]
     llm = SmokeLLM()
     engine = AnswerEngine(
         retriever=Retriever(

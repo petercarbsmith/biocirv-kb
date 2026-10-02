@@ -29,7 +29,7 @@ from sci_rag.llm import LLMClient
 
 pytestmark = pytest.mark.integration
 
-DOMAIN_DIR = Path(__file__).parents[2] / "domain"
+DOMAIN_DIR = Path(__file__).parents[1] / "fixtures" / "demo_domain"
 
 
 def _extraction(passage_count: int) -> str:

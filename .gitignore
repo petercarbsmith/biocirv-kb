@@ -11,6 +11,8 @@ build/
 .env
 .env.*
 !.env.example
+app/.secrets.toml
+app/.streamlit/secrets.toml
 
 # Test and tool caches
 .pytest_cache/
@@ -39,6 +41,10 @@ backups/*
 !backups/.gitkeep
 *.dump
 
+# sci-rag corpus export (docs/operations.md). Holds full chunk and document
+# text, same sensitivity as data/raw/. Never commit.
+export/
+
 # Docs site build
 site/
 
@@ -66,3 +72,6 @@ infra/terraform/**/*.tfvars
 
 # OS noise
 .DS_Store
+
+# Local plans
+local_plans/
