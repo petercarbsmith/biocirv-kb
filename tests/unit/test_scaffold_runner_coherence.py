@@ -239,13 +239,17 @@ def _generated_python_pins(root: Path) -> dict[str, str]:
     pins: dict[str, str] = {}
 
     pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
-    pins["pyproject requires-python"] = re.search(
-        r'(?m)^requires-python = ">=([0-9.]+)"$', pyproject
-    ).group(1)
+    match = re.search(r'(?m)^requires-python = ">=([0-9.]+)"$', pyproject)
+    if match:
+        pins["pyproject requires-python"] = match.group(1)
 
-    pins[".python-version"] = (root / ".python-version").read_text(encoding="utf-8").strip()
+    python_version_file = root / ".python-version"
+    if python_version_file.exists():
+        pins[".python-version"] = python_version_file.read_text(encoding="utf-8").strip()
 
-    pins["pyproject mypy"] = re.search(r'(?m)^python_version = "([0-9.]+)"$', pyproject).group(1)
+    mypy_match = re.search(r'(?m)^python_version = "([0-9.]+)"$', pyproject)
+    if mypy_match:
+        pins["pyproject mypy"] = mypy_match.group(1)
 
     # pixi pins its interpreter in pyproject; the pixi and conda base images
     # take theirs from the manifest, so their Dockerfile names no Python.
@@ -265,8 +269,12 @@ def _generated_python_pins(root: Path) -> dict[str, str]:
         assert len(docker_versions) == 1, f"Dockerfile names several Pythons: {docker_versions}"
         pins["Dockerfile"] = f"3.{docker_versions.pop()}"
 
-    workflow = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    pins["ci matrix"] = re.search(r'python-version: \["([0-9.]+)"\]', workflow).group(1)
+    workflow_path = root / ".github" / "workflows" / "ci.yml"
+    if workflow_path.exists():
+        workflow = workflow_path.read_text(encoding="utf-8")
+        workflow_match = re.search(r'python-version: \["([0-9.]+)"\]', workflow)
+        if workflow_match:
+            pins["ci matrix"] = workflow_match.group(1)
 
     return pins
 

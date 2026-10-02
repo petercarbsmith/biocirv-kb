@@ -21,6 +21,7 @@ from sci_rag.scaffold.answers import ProjectAnswers
 from sci_rag.scaffold.questions import default_answers
 
 REPO_ROOT = Path(__file__).parents[2]
+DEMO_DOMAIN = REPO_ROOT / "tests" / "fixtures" / "demo_domain"
 
 # The files an applier reads or rewrites. Copied from the real repository so a
 # change to any of them shows up here rather than in a user's generated project.
@@ -41,7 +42,7 @@ def template(tmp_path: Path) -> Path:
         destination = root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(REPO_ROOT / relative, destination)
-    shutil.copytree(REPO_ROOT / "domain", root / "domain")
+    shutil.copytree(DEMO_DOMAIN, root / "domain")
     # Stand-ins for the prunable trees: pruning cares that they disappear,
     # not what is inside them.
     (root / "infra" / "terraform").mkdir(parents=True)
