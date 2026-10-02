@@ -89,7 +89,7 @@ each entry.
 | `retrieval.reranker.timeout_s` | float | 15.0 | Maximum reranker duration before fused-order fallback. |
 | `retrieval.reranker.model` | str \| NoneType | unset | Optional model override for the local cross-encoder. |
 | `compression` | CompressionTuning | see nested fields | Question-aware chunk compression before answer prompt assembly. |
-| `compression.enabled` | bool | false | Shipped domain-profile default; change only after paired judged-answer evidence. |
+| `compression.enabled` | bool | true | Shipped domain-profile default; change only after paired judged-answer evidence. |
 | `compression.relevance_floor` | float | 0.0 | Drop a model-scored chunk below this relevance score. The default 0.0 summarizes every source and drops none. A v0.3 sweep found groundedness and citation accuracy both fall off their ceiling at 0.15 and above. Raise it only behind a paired judged-answer run that holds. See docs/evaluation.md. |
 | `compression.max_tokens_per_chunk` | int | 160 | Maximum accepted tokens per summary; over-budget output falls back to full text. |
 

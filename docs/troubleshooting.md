@@ -111,6 +111,23 @@ Postgres.app 16 normally needs this PATH entry:
 $ export PATH="/Applications/Postgres.app/Contents/Versions/16/bin:$PATH"
 ```
 
+<!-- BEGIN GENERATED PROJECT FEATURE: cloud-helper -->
+### Cloud SQL
+
+`start` resumes a paused instance before creating databases or starting the workspace proxy. `resume` changes the instance activation policy; it does not start this workspace proxy. Inspect the helper without exposing its cached password:
+
+```console
+$ uv run python scripts/cloud_postgres.py config
+$ uv run python scripts/cloud_postgres.py status
+$ tail -n 40 .cloudsql/proxy.log
+```
+
+The helper chooses a dynamic port at or above `SCI_RAG_CLOUD_PG_PORT`. Copy the current URL from `config`. Do not assume the first port remained available.
+
+If the password secret was rotated, run `stop`, move `.cloudsql/password` and `.cloudsql/pgpass` to a private backup, then run `start`. Never paste either file into an issue.
+
+Missing `gcloud`, `cloud-sql-proxy`, or `psql` fails before the helper changes anything. Authentication errors need `gcloud auth application-default login`. Permission failures name the rejected Cloud SQL or Secret Manager operation. A stale port or proxy PID stays in `.cloudsql/`. Inspect `proxy.log`, stop the matching process through the helper, and run `start` again.
+<!-- END GENERATED PROJECT FEATURE: cloud-helper -->
 
 `SCI_RAG_DB_BACKEND` chooses what `make db-up` runs. It does not rewrite application configuration. For Cloud SQL or any external service, set the full passwordless async SQLAlchemy URL printed by `config` as `SCI_RAG_DATABASE_URL`. Set `SCI_RAG_TEST_DATABASE_URL` separately before running destructive database tests.
 

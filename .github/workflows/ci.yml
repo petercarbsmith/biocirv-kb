@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.11", "3.12"]
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -201,7 +201,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: 3.12
+          python-version: "3.12"
           enable-cache: true
       - name: Install project and documentation dependencies
         # docs-test carries Playwright for the rendered-geometry guard below.

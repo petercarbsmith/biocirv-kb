@@ -31,6 +31,15 @@ The kit ships Terraform under `infra/terraform/` for Cloud SQL with pgvector, on
 Cloud Run service for REST and MCP, an operations job, a corpus bucket, secrets, and a
 least-privilege service account.
 
+<!-- BEGIN GENERATED PROJECT FEATURE: cloud-provisioning -->
+!!! warning "The development database is a different module"
+
+    `infra/terraform/dev-database/` provisions a shared, pausable development
+    instance for laptop access through the Cloud SQL Auth Proxy. The
+    `scripts/cloud_postgres.py` creates workspace-scoped databases dynamically.
+    The development module disables backups and deletion
+    protection by default. Never point a deployment at it. This page uses the production-shaped path.
+<!-- END GENERATED PROJECT FEATURE: cloud-provisioning -->
 
 These resources accrue charges while they run. Review the selected tiers and region in the saved
 Terraform plan, and tear down experiments through the reviewed teardown in Step 5.
