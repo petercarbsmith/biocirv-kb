@@ -1,6 +1,9 @@
 import asyncio
+
 from sqlalchemy import text
+
 from sci_rag.db.engine import session_scope
+
 
 async def clear_graph():
     async with session_scope() as session:
@@ -14,9 +17,10 @@ async def clear_graph():
         await session.execute(text("TRUNCATE TABLE kg_entities CASCADE"))
         # 5. Reset the graph_extracted_at timestamp on chunks to allow re-extraction
         await session.execute(text("UPDATE chunks SET graph_extracted_at = NULL"))
-        
+
         await session.commit()
         print("Graph cleared and chunk extraction status reset.")
+
 
 if __name__ == "__main__":
     asyncio.run(clear_graph())
