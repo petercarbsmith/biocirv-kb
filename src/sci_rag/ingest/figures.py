@@ -29,13 +29,16 @@ IMAGE_PLACEHOLDER = "<!-- image -->"
 # Minimum pixel dimension on BOTH axes to keep an extracted image (filters logos/icons/rules).
 MIN_FIGURE_DIMENSION = 100
 
+_FIG_NUM_PAT = r"(?:[SsA-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
+
 _FIGURE_CAPTION_RE = re.compile(
-    r"^\s*(?:\*\*|__)?(?P<kind>(?i:Figure|Fig\.?|Scheme))\s*"
-    r"(?P<num>(?:[Ss]?\d+[A-Za-z]?|[IVX]+))"
-    r"(?:\*\*|__)?(?:\s*[\.\:\-\u2013\u2014]|\s+[A-Z])",
+    rf"^\s*(?:\*\*|__)?(?P<kind>(?i:Figure|Fig\.?|Scheme))\s*"
+    rf"(?P<num>{_FIG_NUM_PAT})"
+    rf"(?:\s*(?:,|and)\s*(?i:Figures?|Figs?\.?|Schemes?)?\s*{_FIG_NUM_PAT})*"
+    rf"(?:\*\*|__)?(?:\s*[\.\:\-\u2013\u2014]|\s+[A-Z])",
 )
 _FIGURE_LABEL_SEARCH_RE = re.compile(
-    r"\b(?P<kind>Figure|Fig\.?|Scheme)\s*(?P<num>(?:S?\d+[A-Za-z]?|[IVX]+))\b",
+    rf"\b(?P<kind>Figure|Fig\.?|Scheme)\s*(?P<num>{_FIG_NUM_PAT})\b",
     re.IGNORECASE,
 )
 
@@ -360,12 +363,94 @@ def extract_docling_figures(document: Any) -> list[ExtractedFigure]:
     return figures
 
 
+def _extract_pypdf_xobject_figures(
+    page: Any, page_idx: int, start_idx: int
+) -> list[ExtractedFigure]:
+    """Extract ``/Image`` XObjects directly from a ``pypdf`` page without Pillow."""
+    extracted: list[ExtractedFigure] = []
+    try:
+        res: Any = page.get("/Resources") if hasattr(page, "get") else None
+        res_obj: Any = res.get_object() if res is not None and hasattr(res, "get_object") else res
+        xobj_map: Any = (
+            res_obj.get("/XObject") if res_obj is not None and hasattr(res_obj, "get") else None
+        )
+        xobj_dict: Any = (
+            xobj_map.get_object()
+            if xobj_map is not None and hasattr(xobj_map, "get_object")
+            else xobj_map
+        )
+        if xobj_dict is None or not hasattr(xobj_dict, "items"):
+            return extracted
+    except Exception:
+        return extracted
+
+    for _name, ref in xobj_dict.items():
+        try:
+            obj = ref.get_object() if hasattr(ref, "get_object") else ref
+            if not hasattr(obj, "get") or obj.get("/Subtype") != "/Image":
+                continue
+            w = int(obj.get("/Width") or 0)
+            h = int(obj.get("/Height") or 0)
+            if w < MIN_FIGURE_DIMENSION or h < MIN_FIGURE_DIMENSION:
+                continue
+            raw_bytes = bytes(obj.get_data())
+            png_bytes: bytes | None = None
+            if raw_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+                png_bytes = raw_bytes
+            elif w * h > 0 and len(raw_bytes) in (w * h, w * h * 3, w * h * 4):
+                channels = len(raw_bytes) // (w * h)
+                if channels == 3 and "/SMask" in obj:
+                    try:
+                        smask_ref = obj.get("/SMask")
+                        smask_obj = (
+                            smask_ref.get_object()
+                            if hasattr(smask_ref, "get_object")
+                            else smask_ref
+                        )
+                        alpha_bytes = bytes(smask_obj.get_data())
+                        if len(alpha_bytes) == w * h and alpha_bytes.count(255) < w * h:
+                            composited = bytearray(raw_bytes)
+                            for px, a in enumerate(alpha_bytes):
+                                if a == 255:
+                                    continue
+                                base = px * 3
+                                if a == 0:
+                                    composited[base : base + 3] = b"\xff\xff\xff"
+                                else:
+                                    inv = 255 - a
+                                    composited[base] = (composited[base] * a) // 255 + inv
+                                    composited[base + 1] = (composited[base + 1] * a) // 255 + inv
+                                    composited[base + 2] = (composited[base + 2] * a) // 255 + inv
+                            raw_bytes = bytes(composited)
+                    except Exception:
+                        pass
+                encoded = encode_rgb_png(w, h, raw_bytes, channels=channels)
+                if encoded:
+                    png_bytes = encoded
+            if not png_bytes:
+                continue
+            extracted.append(
+                ExtractedFigure(
+                    figure_index=start_idx + len(extracted),
+                    page_number=page_idx,
+                    width=w,
+                    height=h,
+                    png_bytes=png_bytes,
+                    image_sha256=hashlib.sha256(png_bytes).hexdigest(),
+                )
+            )
+        except Exception as exc:
+            log.debug("pypdf_xobject_extract_failed", page=page_idx, error=str(exc))
+    return extracted
+
+
 def extract_pypdf_figures(reader: Any) -> list[ExtractedFigure]:
     """Extract embedded images >= 100x100 px per page from a ``pypdf.PdfReader``."""
     figures: list[ExtractedFigure] = []
     for page_idx, page in enumerate(reader.pages, start=1):
+        page_start = len(figures)
         try:
-            images = getattr(page, "images", None) or []
+            images = list(getattr(page, "images", None) or [])
         except Exception:
             images = []
         for img_file in images:
@@ -403,4 +488,6 @@ def extract_pypdf_figures(reader: Any) -> list[ExtractedFigure]:
                 )
             except Exception as exc:
                 log.debug("pypdf_image_extract_failed", page=page_idx, error=str(exc))
+        if len(figures) == page_start:
+            figures.extend(_extract_pypdf_xobject_figures(page, page_idx, len(figures)))
     return figures

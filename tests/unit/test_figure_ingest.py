@@ -189,3 +189,59 @@ def test_manifest_per_document_extract_figures_flag(tmp_path: Path) -> None:
     assert entries[0].extract_figures is True
     assert entries[1].extract_figures is False
     assert entries[2].extract_figures is None
+
+
+def test_chapter_numbered_and_multi_figure_captions_and_page_matching() -> None:
+    from sci_rag.ingest.chunker import chunk_document
+    from sci_rag.ingest.parsers import ParsedDocument
+
+    assert looks_like_figure_caption("Figure 1-1. Almond Harvest by anatomical fraction.")
+    assert looks_like_figure_caption(
+        "Figure 2-3, Figure 2-4, Figure 2-5. Illustration of material flows."
+    )
+    assert (
+        extract_figure_label("Figure 1-1. Almond Harvest by anatomical fraction.") == "Figure 1-1"
+    )
+    assert (
+        extract_figure_label("Figure 2-3, Figure 2-4, Figure 2-5. Illustration of material flows.")
+        == "Figure 2-3"
+    )
+
+    cover_png = encode_rgb_png(120, 100, b"\x01\x01\x01" * (120 * 100))
+    fig_png = encode_rgb_png(140, 110, b"\x22\x44\x88" * (140 * 110))
+    doc = ParsedDocument(
+        title="Biomass Report",
+        raw_text=(
+            "Cover Page\n\n\f\n\n"
+            "As shown in Figure 1-1, almond hulls account for half of the harvest.\n\n"
+            "Figure 1-1. Almond Harvest by anatomical fraction based on county data."
+        ),
+        blocks=None,
+        page_count=2,
+        metadata={"parser": "pypdf"},
+        figures=[
+            ExtractedFigure(
+                figure_index=0,
+                page_number=1,
+                width=120,
+                height=100,
+                png_bytes=cover_png,
+            ),
+            ExtractedFigure(
+                figure_index=1,
+                page_number=2,
+                width=140,
+                height=110,
+                png_bytes=fig_png,
+            ),
+        ],
+    )
+    drafts = chunk_document(doc, extract_figures=True)
+    fig_drafts = [d for d in drafts if d.is_figure]
+    assert len(fig_drafts) == 1
+    assert fig_drafts[0].figure is not None
+    assert fig_drafts[0].figure.figure_label == "Figure 1-1"
+    # Matches the Page 2 chart image rather than the Page 1 cover image
+    assert fig_drafts[0].figure.page_number == 2
+    assert fig_drafts[0].figure.png_bytes == fig_png
+    assert any("almond hulls account for half" in m for m in fig_drafts[0].figure.mention_snippets)

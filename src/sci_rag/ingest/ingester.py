@@ -14,8 +14,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from sci_rag.config import get_settings
 from sci_rag.db import Chunk, Document, DocumentFigure, new_id, session_scope
@@ -151,18 +152,74 @@ async def _ingest_one(
         return IngestOutcome(path=path_str, status="failed", detail="no extractable text")
 
     digest = content_hash_for(drafts)
+    source_ref = entry.url or path_str
     store = image_store or get_image_store(settings)
     try:
         async with session_scope() as session:
-            existing = await session.scalar(
-                select(Document.id).where(Document.content_hash == digest)
+            existing_doc = await session.scalar(
+                select(Document).where(
+                    (Document.content_hash == digest) | (Document.source_ref == source_ref)
+                )
             )
-            if existing:
+            if existing_doc is not None:
+                figure_drafts = [d for d in drafts if d.is_figure and d.figure is not None]
+                if should_extract_figures and figure_drafts:
+                    existing_figs = int(
+                        await session.scalar(
+                            select(func.count(DocumentFigure.id)).where(
+                                DocumentFigure.document_id == existing_doc.id
+                            )
+                        )
+                        or 0
+                    )
+                    if existing_figs == 0:
+                        fig_vectors = await embedder.embed(
+                            [d.content for d in figure_drafts], task="document"
+                        )
+                        max_idx = await session.scalar(
+                            select(func.max(Chunk.chunk_index)).where(
+                                Chunk.document_id == existing_doc.id
+                            )
+                        )
+                        start_idx = (int(max_idx) + 1) if max_idx is not None else 0
+                        backfill_records: list[tuple[str, ChunkDraft]] = []
+                        for offset, (draft, vector) in enumerate(
+                            zip(figure_drafts, fig_vectors, strict=True)
+                        ):
+                            chunk_id = new_id()
+                            session.add(
+                                Chunk(
+                                    id=chunk_id,
+                                    document_id=existing_doc.id,
+                                    chunk_index=start_idx + offset,
+                                    content=draft.content,
+                                    token_count=draft.token_count,
+                                    section_path=draft.section_path,
+                                    is_table=False,
+                                    is_figure=True,
+                                    embedding=vector,
+                                    embedding_version=embedder.version,
+                                )
+                            )
+                            backfill_records.append((chunk_id, draft))
+                        await _persist_figure_records(
+                            session, existing_doc.id, backfill_records, store
+                        )
+                        existing_doc.chunk_count = int(existing_doc.chunk_count or 0) + len(
+                            figure_drafts
+                        )
+                        return IngestOutcome(
+                            path=path_str,
+                            status="ingested",
+                            detail=f"added {len(figure_drafts)} figure(s) to document {existing_doc.id}",
+                            document_id=existing_doc.id,
+                            chunk_count=len(figure_drafts),
+                        )
                 return IngestOutcome(
                     path=path_str,
                     status="skipped_duplicate",
-                    detail=f"same content as document {existing}",
-                    document_id=existing,
+                    detail=f"same content as document {existing_doc.id}",
+                    document_id=existing_doc.id,
                 )
 
             vectors = await embedder.embed([d.content for d in drafts], task="document")
@@ -211,37 +268,7 @@ async def _ingest_one(
                     figure_records.append((chunk_id, draft))
 
             if figure_records:
-                await session.flush()
-                for fig_idx, (chunk_id, draft) in enumerate(figure_records):
-                    fig = draft.figure
-                    if fig is None:
-                        continue
-                    image_uri: str | None = None
-                    if fig.png_bytes:
-                        image_uri = await store.put_figure(document.id, fig_idx, fig.png_bytes)
-                    bbox_dict: dict[str, float] | None = None
-                    if fig.bbox is not None and len(fig.bbox) == 4:
-                        bbox_dict = {
-                            "l": float(fig.bbox[0]),
-                            "t": float(fig.bbox[1]),
-                            "r": float(fig.bbox[2]),
-                            "b": float(fig.bbox[3]),
-                        }
-                    session.add(
-                        DocumentFigure(
-                            document_id=document.id,
-                            chunk_id=chunk_id,
-                            figure_index=fig_idx,
-                            figure_label=fig.figure_label,
-                            caption=fig.caption,
-                            page_number=fig.page_number,
-                            bbox=bbox_dict,
-                            image_uri=image_uri,
-                            image_sha256=fig.image_sha256 or None,
-                            width=fig.width or None,
-                            height=fig.height or None,
-                        )
-                    )
+                await _persist_figure_records(session, document.id, figure_records, store)
             document_id = document.id
     except IntegrityError:
         # Another process ingested the same content between our check and our
@@ -258,3 +285,42 @@ async def _ingest_one(
         document_id=document_id,
         chunk_count=len(drafts),
     )
+
+
+async def _persist_figure_records(
+    session: AsyncSession,
+    document_id: str,
+    records: list[tuple[str, ChunkDraft]],
+    store: ImageStore,
+) -> None:
+    await session.flush()
+    for fig_idx, (chunk_id, draft) in enumerate(records):
+        fig = draft.figure
+        if fig is None:
+            continue
+        image_uri: str | None = None
+        if fig.png_bytes:
+            image_uri = await store.put_figure(document_id, fig_idx, fig.png_bytes)
+        bbox_dict: dict[str, float] | None = None
+        if fig.bbox is not None and len(fig.bbox) == 4:
+            bbox_dict = {
+                "l": float(fig.bbox[0]),
+                "t": float(fig.bbox[1]),
+                "r": float(fig.bbox[2]),
+                "b": float(fig.bbox[3]),
+            }
+        session.add(
+            DocumentFigure(
+                document_id=document_id,
+                chunk_id=chunk_id,
+                figure_index=fig_idx,
+                figure_label=fig.figure_label,
+                caption=fig.caption,
+                page_number=fig.page_number,
+                bbox=bbox_dict,
+                image_uri=image_uri,
+                image_sha256=fig.image_sha256 or None,
+                width=fig.width or None,
+                height=fig.height or None,
+            )
+        )

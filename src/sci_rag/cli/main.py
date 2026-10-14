@@ -655,9 +655,15 @@ def retrieve(
         if item.section_path:
             header += f" [dim]({item.section_path})[/dim]"
         console.print(header)
+        extra_meta = ""
+        if item.is_figure:
+            fig_tag = item.figure_label or item.figure_id or "true"
+            extra_meta = f" figure={fig_tag}" + (
+                f" page={item.page_number}" if item.page_number else ""
+            )
         console.print(
             f"   score={item.score:.4f} layers={'+'.join(item.layers)} "
-            f"license={item.license_class} kind={item.kind}"
+            f"license={item.license_class} kind={item.kind}{extra_meta}"
         )
         preview = item.content.replace("\n", " ")
         console.print(f"   [dim]{preview[:220]}{'...' if len(preview) > 220 else ''}[/dim]")
