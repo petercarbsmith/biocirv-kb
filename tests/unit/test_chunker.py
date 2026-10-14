@@ -127,3 +127,38 @@ def test_dehyphenation_and_page_numbers() -> None:
     joined = " ".join(c.body for c in chunks)
     assert "lignocellulosic" in joined
     assert "\n42\n" not in joined
+
+
+def test_figures_are_isolated_and_carry_mention_context() -> None:
+    md = (
+        "# Biomass Atlas\n\n"
+        "## 3 Results\n\n"
+        "Figure 1 shows the spatial residue yield across the Central Valley.\n\n"
+        "<!-- image -->\n\n"
+        "Figure 1: Spatial residue yield map for almond and rice feedstocks.\n\n"
+        "Downstream collection depots are sited near high-density counties."
+    )
+    # By default (extract_figures=False), <!-- image --> is stripped and captions stay prose.
+    default_doc = parse_markdown(md, fallback_title="fallback")
+    default_chunks = chunk_document(default_doc)
+    assert not any(c.is_figure for c in default_chunks)
+    assert all("<!-- image -->" not in c.content for c in default_chunks)
+
+    # When opted in (extract_figures=True), figures become dedicated chunks with mention context.
+    opt_in_doc = parse_markdown(md, fallback_title="fallback", extract_figures=True)
+    chunks = chunk_document(opt_in_doc, extract_figures=True)
+    figures = [c for c in chunks if c.is_figure]
+    assert len(figures) == 1
+    fig_chunk = figures[0]
+    assert fig_chunk.section_path == "3 Results"
+    assert "[Figure 1] Figure 1: Spatial residue yield map" in fig_chunk.body
+    assert "Context from text: Figure 1 shows the spatial residue yield" in fig_chunk.body
+    assert fig_chunk.figure is not None
+    assert fig_chunk.figure.figure_label == "Figure 1"
+
+    # Figure caption text must not be duplicated into adjacent prose chunks or overlap.
+    prose_chunks = [c for c in chunks if not c.is_figure]
+    assert prose_chunks
+    for prose in prose_chunks:
+        assert "[Figure 1]" not in prose.content
+        assert "Spatial residue yield map for almond" not in prose.content

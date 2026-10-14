@@ -11,12 +11,16 @@ whether a numerical table survives in one piece. This chunker keeps both:
    path, e.g. "2 Methods > 2.1 Feedstock handling".
 4. Detect table-like paragraphs (pipes, tab columns, aligned grids) and
    emit each table as its own intact chunk.
-5. Merge ordinary paragraphs up to a target token budget, splitting
+5. When ``extract_figures=True`` (or when structured figure blocks are
+   present), isolate each figure caption and its prose mentions into a
+   dedicated ``is_figure=True`` chunk without carrying overlap into or out
+   of the figure.
+6. Merge ordinary paragraphs up to a target token budget, splitting
    oversized paragraphs on sentence boundaries, and never merging across a
    section boundary.
-6. Carry a tail of trailing overlap into the next prose chunk so no idea is
+7. Carry a tail of trailing overlap into the next prose chunk so no idea is
    stranded on a boundary.
-7. Prepend the document title and section path to every chunk, so each one
+8. Prepend the document title and section path to every chunk, so each one
    makes sense (and embeds well) on its own.
 
 Defaults (800-token target, 150-token overlap) suit dense technical PDFs;
@@ -26,8 +30,15 @@ both are parameters.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+from sci_rag.ingest.figures import (
+    ExtractedFigure,
+    format_figure_body,
+    looks_like_figure_caption,
+    populate_figure_blocks,
+)
 from sci_rag.ingest.parsers import Block, ParsedDocument
 from sci_rag.ingest.tokens import count_tokens
 
@@ -39,12 +50,26 @@ class ChunkDraft:
     token_count: int
     section_path: str | None
     is_table: bool
+    is_figure: bool = False
+    figure: ExtractedFigure | None = None
 
 
 def chunk_document(
-    doc: ParsedDocument, *, target_tokens: int = 800, overlap_tokens: int = 150
+    doc: ParsedDocument,
+    *,
+    target_tokens: int = 800,
+    overlap_tokens: int = 150,
+    extract_figures: bool = False,
 ) -> list[ChunkDraft]:
-    blocks = doc.blocks if doc.blocks is not None else _segment_raw_text(doc.raw_text or "")
+    blocks = (
+        doc.blocks
+        if doc.blocks is not None
+        else _segment_raw_text(
+            doc.raw_text or "",
+            extract_figures=extract_figures or bool(doc.figures),
+            extracted_figures=doc.figures,
+        )
+    )
     return _chunk_blocks(
         blocks, title=doc.title, target_tokens=target_tokens, overlap_tokens=overlap_tokens
     )
@@ -67,8 +92,14 @@ def _normalize(text: str) -> str:
     return text.strip()
 
 
-def _segment_raw_text(raw: str) -> list[Block]:
+def _segment_raw_text(
+    raw: str,
+    *,
+    extract_figures: bool = False,
+    extracted_figures: Sequence[ExtractedFigure] | None = None,
+) -> list[Block]:
     blocks: list[Block] = []
+    fig_iter = iter(extracted_figures or [])
     for para in _normalize(raw).split("\n\n"):
         para = para.strip()
         if not para:
@@ -83,8 +114,26 @@ def _segment_raw_text(raw: str) -> list[Block]:
         # Reflow internal line breaks into spaces; drop tiny fragments that
         # are almost always extraction noise.
         flowed = re.sub(r"\s*\n\s*", " ", para).strip()
+        if extract_figures and looks_like_figure_caption(flowed):
+            matched_fig = next(fig_iter, None)
+            if matched_fig is not None and not matched_fig.caption:
+                matched_fig.caption = flowed
+            blocks.append(Block(kind="figure", text=flowed, figure=matched_fig))
+            continue
         if len(flowed) >= 20:
             blocks.append(Block(kind="text", text=flowed))
+
+    if extract_figures:
+        for leftover in fig_iter:
+            if leftover.caption or leftover.png_bytes:
+                blocks.append(
+                    Block(
+                        kind="figure",
+                        text=leftover.caption or (leftover.figure_label or "Figure"),
+                        figure=leftover,
+                    )
+                )
+        blocks = populate_figure_blocks(blocks)
     return blocks
 
 
@@ -242,6 +291,7 @@ def _chunk_blocks(
                 token_count=count_tokens(content),
                 section_path=section,
                 is_table=is_table,
+                is_figure=False,
             )
         )
         # A chunk hands its tail to the next chunk so no idea is stranded on
@@ -250,6 +300,28 @@ def _chunk_blocks(
             pending_overlap = _overlap_tail_lines(body, overlap_tokens)
         else:
             pending_overlap = _overlap_tail(body, overlap_tokens)
+
+    def finalize_figure(block: Block) -> None:
+        nonlocal pending_overlap
+        body = format_figure_body(block).strip()
+        if not body:
+            return
+        section = tracker.path()
+        breadcrumb = title if not section else f"{title} > {section}"
+        content = f"{breadcrumb}\n\n{body}"
+        chunks.append(
+            ChunkDraft(
+                content=content,
+                body=body,
+                token_count=count_tokens(content),
+                section_path=section,
+                is_table=False,
+                is_figure=True,
+                figure=block.figure,
+            )
+        )
+        # Figures are self-contained units and do not hand overlap into prose.
+        pending_overlap = ""
 
     def flush_buffer() -> None:
         nonlocal buffer, buffer_tokens
@@ -275,6 +347,10 @@ def _chunk_blocks(
         if block.kind == "table":
             flush_buffer()
             finalize(block.text, is_table=True)
+            continue
+        if block.kind == "figure":
+            flush_buffer()
+            finalize_figure(block)
             continue
         for piece in _split_oversized(block.text, target_tokens):
             piece_tokens = count_tokens(piece)
