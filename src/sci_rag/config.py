@@ -120,6 +120,9 @@ class Settings(BaseSettings):
     # --- Paths --------------------------------------------------------------
     domain_dir: Path = Path("domain")
     data_dir: Path = Path("data")
+    image_bucket: str | None = None
+    image_dir: Path = Path("data/processed/images")
+    extract_figures: bool = False
 
     # --- Server -------------------------------------------------------------
     server_host: str = "127.0.0.1"

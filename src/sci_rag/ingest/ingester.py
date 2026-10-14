@@ -17,9 +17,11 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from sci_rag.db import Chunk, Document, session_scope
+from sci_rag.config import get_settings
+from sci_rag.db import Chunk, Document, DocumentFigure, new_id, session_scope
 from sci_rag.embed.provider import EmbeddingProvider
 from sci_rag.ingest.chunker import ChunkDraft, chunk_document
+from sci_rag.ingest.image_store import ImageStore, get_image_store
 from sci_rag.ingest.manifest import CorpusEntry
 from sci_rag.ingest.parsers import parse_file
 
@@ -80,6 +82,8 @@ async def ingest_entries(
     target_tokens: int = 800,
     overlap_tokens: int = 150,
     prefer_docling: bool = True,
+    extract_figures: bool | None = None,
+    image_store: ImageStore | None = None,
 ) -> IngestReport:
     report = IngestReport()
     for entry in entries:
@@ -89,6 +93,8 @@ async def ingest_entries(
             target_tokens=target_tokens,
             overlap_tokens=overlap_tokens,
             prefer_docling=prefer_docling,
+            extract_figures=extract_figures,
+            image_store=image_store,
         )
         report.outcomes.append(outcome)
         log.info(
@@ -108,21 +114,44 @@ async def _ingest_one(
     target_tokens: int,
     overlap_tokens: int,
     prefer_docling: bool,
+    extract_figures: bool | None = None,
+    image_store: ImageStore | None = None,
 ) -> IngestOutcome:
     path_str = str(entry.path)
+    settings = get_settings()
+    should_extract_figures = (
+        entry.extract_figures
+        if entry.extract_figures is not None
+        else (extract_figures if extract_figures is not None else settings.extract_figures)
+    )
     try:
-        parsed = parse_file(entry.path, prefer_docling=prefer_docling)
+        parsed = parse_file(
+            entry.path,
+            prefer_docling=prefer_docling,
+            extract_figures=should_extract_figures,
+        )
     except FileNotFoundError:
         return IngestOutcome(path=path_str, status="failed", detail="file not found")
     except Exception as exc:
         return IngestOutcome(path=path_str, status="failed", detail=f"parse error: {exc}")
 
+    if not should_extract_figures and parsed.blocks is not None:
+        parsed.blocks = [b for b in parsed.blocks if b.kind != "figure"]
+
     title = entry.title or parsed.title
-    drafts = chunk_document(parsed, target_tokens=target_tokens, overlap_tokens=overlap_tokens)
+    drafts = chunk_document(
+        parsed,
+        target_tokens=target_tokens,
+        overlap_tokens=overlap_tokens,
+        extract_figures=should_extract_figures,
+    )
+    if not should_extract_figures:
+        drafts = [d for d in drafts if not d.is_figure]
     if not drafts:
         return IngestOutcome(path=path_str, status="failed", detail="no extractable text")
 
     digest = content_hash_for(drafts)
+    store = image_store or get_image_store(settings)
     try:
         async with session_scope() as session:
             existing = await session.scalar(
@@ -161,19 +190,58 @@ async def _ingest_one(
             session.add(document)
             await session.flush()
 
+            figure_records: list[tuple[str, ChunkDraft]] = []
             for index, (draft, vector) in enumerate(zip(drafts, vectors, strict=True)):
+                chunk_id = new_id()
                 session.add(
                     Chunk(
+                        id=chunk_id,
                         document_id=document.id,
                         chunk_index=index,
                         content=draft.content,
                         token_count=draft.token_count,
                         section_path=draft.section_path,
                         is_table=draft.is_table,
+                        is_figure=draft.is_figure,
                         embedding=vector,
                         embedding_version=embedder.version,
                     )
                 )
+                if draft.is_figure and draft.figure is not None:
+                    figure_records.append((chunk_id, draft))
+
+            if figure_records:
+                await session.flush()
+                for fig_idx, (chunk_id, draft) in enumerate(figure_records):
+                    fig = draft.figure
+                    if fig is None:
+                        continue
+                    image_uri: str | None = None
+                    if fig.png_bytes:
+                        image_uri = await store.put_figure(document.id, fig_idx, fig.png_bytes)
+                    bbox_dict: dict[str, float] | None = None
+                    if fig.bbox is not None and len(fig.bbox) == 4:
+                        bbox_dict = {
+                            "l": float(fig.bbox[0]),
+                            "t": float(fig.bbox[1]),
+                            "r": float(fig.bbox[2]),
+                            "b": float(fig.bbox[3]),
+                        }
+                    session.add(
+                        DocumentFigure(
+                            document_id=document.id,
+                            chunk_id=chunk_id,
+                            figure_index=fig_idx,
+                            figure_label=fig.figure_label,
+                            caption=fig.caption,
+                            page_number=fig.page_number,
+                            bbox=bbox_dict,
+                            image_uri=image_uri,
+                            image_sha256=fig.image_sha256 or None,
+                            width=fig.width or None,
+                            height=fig.height or None,
+                        )
+                    )
             document_id = document.id
     except IntegrityError:
         # Another process ingested the same content between our check and our

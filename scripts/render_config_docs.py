@@ -45,6 +45,9 @@ SETTING_DESCRIPTIONS = {
     "provider_call_timeout_s": "Extra budget for a stage that calls an embedding or generation provider before its database work: vector, community, graph, and HyDE.",
     "domain_dir": "Path to the validated domain profile and prompts.",
     "data_dir": "Base path for corpus data and snapshots.",
+    "image_bucket": "Optional GCS bucket name for storing and serving extracted figure PNGs. Unset uses local filesystem storage.",
+    "image_dir": "Local directory for storing extracted figure PNGs when no GCS bucket is configured.",
+    "extract_figures": "Default for extracting embedded PDF figures and captions into dedicated chunks when a manifest row or CLI flag does not specify it.",
     "server_host": "Host interface for the FastAPI server.",
     "server_port": "Port for REST, OpenAPI, and streamable HTTP MCP.",
     "api_keys": "JSON map of bearer key to scopes, rate limit, and optional model-key binding. Unset is open localhost mode.",
@@ -135,6 +138,7 @@ MANIFEST_DESCRIPTIONS = {
     "license_class": "Redistribution rights: `public`, `open_commercial`, `open_noncommercial`, `restricted`, or `unknown`. Never drafted; `unknown` is excluded from any request that restricts rights.",
     "license_source": "The sentence or signal the license class was based on, kept as evidence.",
     "source": "Your own grouping label, such as `journal_papers` or `agency_reports`. Becomes a retrieval filter.",
+    "extract_figures": "Optional per-document override (`true` or `false`) for extracting embedded PDF figures and captions into dedicated chunks. Unset uses `--extract-figures` or `SCI_RAG_EXTRACT_FIGURES`.",
 }
 
 SEED_DESCRIPTIONS = {

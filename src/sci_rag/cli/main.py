@@ -307,6 +307,7 @@ def _ingest_and_report(  # type: ignore[no-untyped-def]
     no_docling: bool,
     chunk_tokens: int,
     overlap_tokens: int,
+    extract_figures: bool | None = None,
 ):
     """Load the documents, ingest them, print the report; shared by ingest and build."""
     from sci_rag.config import get_settings
@@ -350,6 +351,7 @@ def _ingest_and_report(  # type: ignore[no-untyped-def]
             target_tokens=chunk_tokens,
             overlap_tokens=overlap_tokens,
             prefer_docling=not no_docling,
+            extract_figures=extract_figures,
         )
 
     report = run_async(run())
@@ -395,6 +397,11 @@ def ingest(
     no_docling: bool = typer.Option(
         False, "--no-docling", help="Skip Docling even if installed (use the pypdf fallback)."
     ),
+    extract_figures: bool | None = typer.Option(
+        None,
+        "--extract-figures/--no-extract-figures",
+        help="Extract embedded PDF figures and captions into dedicated chunks (unless overridden per document in the manifest).",
+    ),
     chunk_tokens: int = typer.Option(800, help="Target tokens per chunk."),
     overlap_tokens: int = typer.Option(150, help="Overlap tokens between chunks."),
 ) -> None:
@@ -411,6 +418,7 @@ def ingest(
         no_docling=no_docling,
         chunk_tokens=chunk_tokens,
         overlap_tokens=overlap_tokens,
+        extract_figures=extract_figures,
     )
     if report.failed:
         raise typer.Exit(1)
@@ -433,6 +441,11 @@ def build(
     no_docling: bool = typer.Option(
         False, "--no-docling", help="Skip Docling even if installed (use the pypdf fallback)."
     ),
+    extract_figures: bool | None = typer.Option(
+        None,
+        "--extract-figures/--no-extract-figures",
+        help="Extract embedded PDF figures and captions into dedicated chunks (unless overridden per document in the manifest).",
+    ),
     no_graph: bool = typer.Option(
         False, "--no-graph", help="Stop after ingestion; skip the knowledge graph."
     ),
@@ -453,6 +466,7 @@ def build(
         no_docling=no_docling,
         chunk_tokens=800,
         overlap_tokens=150,
+        extract_figures=extract_figures,
     )
     failed = bool(report.failed)
 
