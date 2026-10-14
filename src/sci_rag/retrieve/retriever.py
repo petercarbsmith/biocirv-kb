@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from sci_rag.config import Settings, get_settings
 from sci_rag.db.engine import get_session_factory
-from sci_rag.db.models import Chunk, Document, KgCommunity
+from sci_rag.db.models import Chunk, Document, DocumentFigure, KgCommunity
 from sci_rag.domain import DomainProfile, RerankerTuning, load_domain
 from sci_rag.embed import EmbeddingProvider, QueryEmbeddingCache, get_embedder
 from sci_rag.llm import LLMClient, get_llm
@@ -395,12 +395,18 @@ class Retriever:
                         Chunk.content,
                         Chunk.section_path,
                         Chunk.is_table,
+                        Chunk.is_figure,
                         Document.title,
                         Document.formatted_citation,
                         Document.license_class,
                         Document.source,
+                        DocumentFigure.id.label("figure_id"),
+                        DocumentFigure.figure_label,
+                        DocumentFigure.page_number,
+                        DocumentFigure.image_uri,
                     )
                     .join(Document, Chunk.document_id == Document.id)
+                    .outerjoin(DocumentFigure, DocumentFigure.chunk_id == Chunk.id)
                     # Scope was applied inside every stage; re-applying here is
                     # cheap defense in depth.
                     .where(Chunk.id.in_(chunk_ids), *scope_conditions(scope))
@@ -419,6 +425,11 @@ class Retriever:
                         license_class=row.license_class,
                         source=row.source,
                         is_table=row.is_table,
+                        is_figure=bool(row.is_figure),
+                        figure_id=row.figure_id,
+                        figure_label=row.figure_label,
+                        page_number=row.page_number,
+                        image_uri=row.image_uri,
                     )
             if community_ids:
                 rows = await session.execute(

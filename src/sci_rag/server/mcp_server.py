@@ -95,6 +95,16 @@ def build_mcp_server(
                     "license_class": item.license_class,
                     "score": round(item.score, 4),
                     "found_by_layers": item.layers,
+                    "is_table": item.is_table,
+                    "is_figure": item.is_figure,
+                    "figure_id": item.figure_id,
+                    "figure_label": item.figure_label,
+                    "page_number": item.page_number,
+                    "image_url": (
+                        f"/v1/figures/{item.figure_id}/image"
+                        if item.figure_id and item.image_uri
+                        else None
+                    ),
                 }
                 for item in result.items
             ],
@@ -170,6 +180,7 @@ def build_mcp_server(
                     "index": chunk.chunk_index,
                     "section": chunk.section_path,
                     "is_table": chunk.is_table,
+                    "is_figure": chunk.is_figure,
                     "preview": chunk.content[:300],
                 }
                 for chunk in chunks

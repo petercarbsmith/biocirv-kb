@@ -144,6 +144,11 @@ class RetrievedItem:
     license_class: str = "unknown"
     source: str = ""
     is_table: bool = False
+    is_figure: bool = False
+    figure_id: str | None = None
+    figure_label: str | None = None
+    page_number: int | None = None
+    image_uri: str | None = None
 
 
 @dataclass

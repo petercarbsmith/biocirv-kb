@@ -7,7 +7,9 @@ metadata; the detail view previews its chunks.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Query, Request, Response
 
 from sci_rag.db.models import Chunk, Document
 from sci_rag.server.auth import AuthContext, require_scopes
@@ -75,6 +77,18 @@ async def get_document(
     )
 
 
+@router.get("/v1/figures/{figure_id}/image")
+async def get_figure_image(
+    figure_id: str,
+    request: Request,
+    license_classes: Annotated[list[str] | None, Query()] = None,
+    auth: AuthContext = require_scopes("corpus:read"),
+) -> Response:
+    service: RagService = request.app.state.service
+    png_bytes = await service.get_figure_image(figure_id, license_classes=license_classes)
+    return Response(content=png_bytes, media_type="image/png")
+
+
 def _preview(chunk: Chunk, chars: int = 240) -> ChunkPreview:
     text = chunk.content.replace("\n", " ")
     return ChunkPreview(
@@ -82,5 +96,6 @@ def _preview(chunk: Chunk, chars: int = 240) -> ChunkPreview:
         chunk_index=chunk.chunk_index,
         section_path=chunk.section_path,
         is_table=chunk.is_table,
+        is_figure=chunk.is_figure,
         preview=text[:chars] + ("..." if len(text) > chars else ""),
     )

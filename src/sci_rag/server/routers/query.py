@@ -40,6 +40,13 @@ def result_to_models(
             license_class=item.license_class,
             source=item.source,
             is_table=item.is_table,
+            is_figure=item.is_figure,
+            figure_id=item.figure_id,
+            figure_label=item.figure_label,
+            page_number=item.page_number,
+            image_url=(
+                f"/v1/figures/{item.figure_id}/image" if item.figure_id and item.image_uri else None
+            ),
         )
         for item in result.items
     ]
