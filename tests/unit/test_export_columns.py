@@ -44,6 +44,7 @@ EXPECTED = {
         "token_count",
         "section_path",
         "is_table",
+        "is_figure",
         "embedding_version",
         "graph_extracted_at",
     },

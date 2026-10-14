@@ -25,7 +25,7 @@ async def _stamp_alembic_revision() -> None:
             text("CREATE TABLE IF NOT EXISTS alembic_version (version_num varchar(32) PRIMARY KEY)")
         )
         await conn.execute(text("DELETE FROM alembic_version"))
-        await conn.execute(text("INSERT INTO alembic_version VALUES ('0006')"))
+        await conn.execute(text("INSERT INTO alembic_version VALUES ('0007')"))
 
 
 async def test_doctor_reports_outdated_schema_before_new_column_queries(clean_tables) -> None:  # type: ignore[no-untyped-def]
@@ -55,7 +55,7 @@ async def test_doctor_reports_outdated_schema_before_new_column_queries(clean_ta
                     "ON kg_entities (canonical_entity_id)"
                 )
             )
-            await conn.execute(text("UPDATE alembic_version SET version_num = '0006'"))
+            await conn.execute(text("UPDATE alembic_version SET version_num = '0007'"))
 
 
 def _by_name(checks) -> dict[str, object]:  # type: ignore[no-untyped-def]
