@@ -432,19 +432,19 @@ class Retriever:
                         image_uri=row.image_uri,
                     )
             if community_ids:
-                rows = await session.execute(
+                community_rows = await session.execute(
                     select(KgCommunity.id, KgCommunity.title, KgCommunity.summary).where(
                         KgCommunity.id.in_(community_ids)
                     )
                 )
-                for row in rows:
-                    community_map[row.id] = RetrievedItem(
+                for comm_row in community_rows:
+                    community_map[comm_row.id] = RetrievedItem(
                         kind="community",
-                        id=row.id,
+                        id=comm_row.id,
                         score=0.0,
                         layers=[],
-                        title=f"Knowledge graph overview: {row.title}",
-                        content=row.summary or "",
+                        title=f"Knowledge graph overview: {comm_row.title}",
+                        content=comm_row.summary or "",
                         license_class="aggregate",
                         source="knowledge_graph",
                     )

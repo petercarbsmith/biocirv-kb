@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
-from sqlalchemy import Row, bindparam, func, or_, select, text, update
+from sqlalchemy import bindparam, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql.sqltypes import Text as TextType
@@ -194,7 +194,10 @@ async def extract_graph(
             statement = statement.where(Chunk.graph_extracted_at.is_(None))
         if max_chunks:
             statement = statement.limit(max_chunks)
-        pending = (await session.execute(statement)).all()
+        pending: list[tuple[str, str, str]] = [
+            (str(row[0]), str(row[1]), str(row[2]))
+            for row in (await session.execute(statement)).all()
+        ]
 
     if not pending:
         log.info("graph_extract_nothing_to_do")
@@ -215,7 +218,7 @@ async def extract_graph(
     return stats
 
 
-def _batch_id(batch: Sequence[Row[tuple[str, str, str]]]) -> str:
+def _batch_id(batch: Sequence[tuple[str, str, str]]) -> str:
     """A stable, content-free name for a batch, so logs can be followed.
 
     Derived from the chunk ids in order, which are identifiers rather than
@@ -228,7 +231,7 @@ def _batch_id(batch: Sequence[Row[tuple[str, str, str]]]) -> str:
 
 
 async def _extract_with_recovery(
-    batch: Sequence[Row[tuple[str, str, str]]],
+    batch: Sequence[tuple[str, str, str]],
     session_factory: async_sessionmaker[AsyncSession],
     llm: LLMClient,
     domain: DomainProfile,
@@ -294,7 +297,7 @@ async def _extract_with_recovery(
 
 
 async def _extract_batch(
-    batch: Sequence[Row[tuple[str, str, str]]],
+    batch: Sequence[tuple[str, str, str]],
     session_factory: async_sessionmaker[AsyncSession],
     llm: LLMClient,
     domain: DomainProfile,
