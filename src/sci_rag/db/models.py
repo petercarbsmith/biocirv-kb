@@ -87,6 +87,9 @@ class Document(Base):
     chunks: Mapped[list[Chunk]] = relationship(
         back_populates="document", cascade="all, delete-orphan", passive_deletes=True
     )
+    figures: Mapped[list[DocumentFigure]] = relationship(
+        back_populates="document", cascade="all, delete-orphan", passive_deletes=True
+    )
 
     __table_args__ = (
         UniqueConstraint("content_hash", name="uq_documents_content_hash"),
@@ -98,7 +101,7 @@ class Document(Base):
 
 
 class Chunk(Base):
-    """A retrieval unit: a few paragraphs, or one intact table."""
+    """A retrieval unit: a few paragraphs, one intact table, or one figure."""
 
     __tablename__ = "chunks"
 
@@ -111,6 +114,8 @@ class Chunk(Base):
     section_path: Mapped[str | None] = mapped_column(Text)
     # Tables are chunked whole so rows never straddle two chunks.
     is_table: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Figures pair a caption and prose callout snippets with a DocumentFigure record.
+    is_figure: Mapped[bool] = mapped_column(Boolean, default=False)
 
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
     # Which model produced the vector, so a model upgrade can find stale rows.
@@ -144,6 +149,38 @@ class Chunk(Base):
         ),
         # Full-text index for the keyword retrieval layer.
         Index("ix_chunks_search_tsv", "search_tsv", postgresql_using="gin"),
+    )
+
+
+class DocumentFigure(Base):
+    """One extracted figure from a document, linked to its caption chunk and image URI."""
+
+    __tablename__ = "document_figures"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    chunk_id: Mapped[str | None] = mapped_column(
+        ForeignKey("chunks.id", ondelete="SET NULL"), nullable=True
+    )
+    figure_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    figure_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    caption: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bbox: Mapped[dict[str, float] | None] = mapped_column(JSONB, nullable=True)
+    image_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    document: Mapped[Document] = relationship(back_populates="figures")
+
+    __table_args__ = (
+        UniqueConstraint("document_id", "figure_index", name="ux_document_figures_doc_idx"),
+        Index("ix_document_figures_document_id", "document_id"),
+        Index("ix_document_figures_chunk_id", "chunk_id"),
     )
 
 

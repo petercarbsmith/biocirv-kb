@@ -21,11 +21,14 @@ from sci_rag.db.models import (
     Chunk,
     Document,
     DocumentCitation,
+    DocumentFigure,
     KgCommunity,
     KgEntity,
     KgRelationship,
 )
+from sci_rag.ingest.image_store import get_image_store
 from sci_rag.retrieve import RetrievalResult, RetrievalScope, Retriever
+from sci_rag.retrieve.types import scope_conditions
 from sci_rag.server.errors import ApiError
 
 
@@ -214,6 +217,35 @@ class RagService:
                 .all()
             )
         return document, list(chunks)
+
+    async def get_figure_image(
+        self,
+        figure_id: str,
+        *,
+        license_classes: list[str] | None = None,
+    ) -> bytes:
+        """Fetch raw PNG bytes for a figure, enforcing license scope before reading storage."""
+        scope = self.scope_from(license_classes)
+        if scope is not None and scope.denies_all():
+            raise ApiError(404, "figure_not_found", "No such figure", figure_id)
+        conditions: list[ColumnElement[bool]] = [DocumentFigure.id == figure_id]
+        if scope is not None:
+            conditions.extend(scope_conditions(scope))
+        async with self.session_factory() as session:
+            row = (
+                await session.execute(
+                    select(DocumentFigure)
+                    .join(Document, Document.id == DocumentFigure.document_id)
+                    .where(*conditions)
+                )
+            ).scalar_one_or_none()
+        if row is None or not row.image_uri:
+            raise ApiError(404, "figure_not_found", "No such figure", figure_id)
+        store = get_image_store(self.settings)
+        try:
+            return await store.get_figure_bytes(row.image_uri)
+        except FileNotFoundError as exc:
+            raise ApiError(404, "figure_not_found", "No such figure", figure_id) from exc
 
     async def get_citations(self, document_id: str) -> dict[str, Any]:
         """Return resolved and unresolved references in both directions."""

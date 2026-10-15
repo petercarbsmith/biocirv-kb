@@ -29,7 +29,7 @@ from sci_rag.evals.seeds import DRAFTED_TAG, SeedQuestion, load_seed_questions
 from sci_rag.llm import MockLLM
 
 REPO_ROOT = Path(__file__).parents[2]
-DOMAIN_DIR = REPO_ROOT / "domain"
+DOMAIN_DIR = REPO_ROOT / "tests" / "fixtures" / "demo_domain"
 
 _SAMPLE = PassageSample(
     passages=(

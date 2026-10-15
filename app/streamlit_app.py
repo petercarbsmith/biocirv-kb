@@ -1,8 +1,8 @@
-"""BioCirV Knowledge Base — Streamlit chat interface.
+"""BioCirV Knowledge Base - Streamlit chat interface.
 
 A single-file Streamlit app that lets beta testers have a ChatGPT-style
 conversation with the BioCirV knowledge base. No installation or API key
-required for testers — secrets are injected server-side.
+required for testers - secrets are injected server-side.
 
 Deploy to Streamlit Community Cloud by pointing it at app/streamlit_app.py.
 Set BIOCIRV_API_URL and BIOCIRV_API_KEY in the Streamlit Cloud secrets dashboard.
@@ -20,7 +20,7 @@ import httpx
 import streamlit as st
 
 # ---------------------------------------------------------------------------
-# Configuration — secrets with .env fallback for local development
+# Configuration - secrets with .env fallback for local development
 # ---------------------------------------------------------------------------
 
 try:
@@ -127,6 +127,25 @@ def translate_error(exc: Exception) -> str:
 # ---------------------------------------------------------------------------
 
 
+def fetch_figure_image(image_url: str) -> bytes | None:
+    """Fetch a figure PNG from the API using the server-side API key."""
+    url = (
+        image_url
+        if image_url.startswith("http")
+        else f"{API_URL.rstrip('/')}/{image_url.lstrip('/')}"
+    )
+    try:
+        response = httpx.get(
+            url,
+            headers={"X-API-Key": API_KEY},
+            timeout=15.0,
+        )
+        response.raise_for_status()
+        return response.content
+    except Exception:
+        return None
+
+
 def render_citation_line(idx: int, citation: dict) -> str:
     """Format a single citation as a numbered plain-text line."""
     title = citation.get("title") or "Untitled"
@@ -134,12 +153,31 @@ def render_citation_line(idx: int, citation: dict) -> str:
     formatted = citation.get("citation") or citation.get("formatted_citation") or ""
     license_label = citation.get("license_class") or citation.get("license") or ""
 
-    parts = [f"**[{idx}]** {title}"]
+    header = f"**[{idx}]** {title}"
+    if citation.get("is_figure"):
+        fig_badge = citation.get("figure_label") or "Figure"
+        page_num = citation.get("page_number")
+        if page_num is not None:
+            fig_badge = f"{fig_badge}, Page {page_num}"
+        header = f"{header} `[{fig_badge}]`"
+
+    parts = [header]
     if formatted:
         parts.append(f"  \n{formatted}")
     if license_label and license_label not in ("unknown", ""):
         parts.append(f"  \n*{license_label}*")
     return "\n".join(parts)
+
+
+def render_citation_block(idx: int, citation: dict) -> None:
+    """Render citation text and optional figure image inside the Sources expander."""
+    st.markdown(render_citation_line(idx, citation))
+    image_url = citation.get("image_url")
+    if citation.get("is_figure") and image_url:
+        img_bytes = fetch_figure_image(image_url)
+        if img_bytes:
+            caption = citation.get("figure_label") or "Figure"
+            st.image(img_bytes, caption=caption, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +253,7 @@ Questions or feedback? Email the BioCirV team.
 # Page header
 # ---------------------------------------------------------------------------
 
-st.title("🌿 BioCirV Knowledge Base — Beta")
+st.title("🌿 BioCirV Knowledge Base - Beta")
 st.caption("Agriculture · Circular Bioeconomy · Biomass Valorization")
 
 # ---------------------------------------------------------------------------
@@ -238,7 +276,7 @@ for message in st.session_state.messages:
             if citations:
                 with st.expander(f"Sources ({len(citations)})"):
                     for i, citation in enumerate(citations, start=1):
-                        st.markdown(render_citation_line(i, citation))
+                        render_citation_block(i, citation)
                         if i < len(citations):
                             st.divider()
 
@@ -282,7 +320,7 @@ if prompt:
                 if citations_raw:
                     with st.expander(f"Sources ({len(citations_raw)})"):
                         for i, citation in enumerate(citations_raw, start=1):
-                            st.markdown(render_citation_line(i, citation))
+                            render_citation_block(i, citation)
                             if i < len(citations_raw):
                                 st.divider()
 

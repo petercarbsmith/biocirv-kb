@@ -38,6 +38,9 @@ renderer, including commented optional values.
 | `SCI_RAG_PROVIDER_CALL_TIMEOUT_S` | float | 60.0 | Extra budget for a stage that calls an embedding or generation provider before its database work: vector, community, graph, and HyDE. |
 | `SCI_RAG_DOMAIN_DIR` | Path | domain | Path to the validated domain profile and prompts. |
 | `SCI_RAG_DATA_DIR` | Path | data | Base path for corpus data and snapshots. |
+| `SCI_RAG_IMAGE_BUCKET` | str \| NoneType | unset | Optional GCS bucket name for storing and serving extracted figure PNGs. Unset uses local filesystem storage. |
+| `SCI_RAG_IMAGE_DIR` | Path | data/processed/images | Local directory for storing extracted figure PNGs when no GCS bucket is configured. |
+| `SCI_RAG_EXTRACT_FIGURES` | bool | false | Default for extracting embedded PDF figures and captions into dedicated chunks when a manifest row or CLI flag does not specify it. |
 | `SCI_RAG_SERVER_HOST` | str | 127.0.0.1 | Host interface for the FastAPI server. |
 | `SCI_RAG_SERVER_PORT` | int | 8000 | Port for REST, OpenAPI, and streamable HTTP MCP. |
 | `SCI_RAG_API_KEYS` | str \| NoneType | unset | JSON map of bearer key to scopes, rate limit, and optional model-key binding. Unset is open localhost mode. |
@@ -89,7 +92,7 @@ each entry.
 | `retrieval.reranker.timeout_s` | float | 15.0 | Maximum reranker duration before fused-order fallback. |
 | `retrieval.reranker.model` | str \| NoneType | unset | Optional model override for the local cross-encoder. |
 | `compression` | CompressionTuning | see nested fields | Question-aware chunk compression before answer prompt assembly. |
-| `compression.enabled` | bool | true | Shipped domain-profile default; change only after paired judged-answer evidence. |
+| `compression.enabled` | bool | false | Shipped domain-profile default; change only after paired judged-answer evidence. |
 | `compression.relevance_floor` | float | 0.0 | Drop a model-scored chunk below this relevance score. The default 0.0 summarizes every source and drops none. A v0.3 sweep found groundedness and citation accuracy both fall off their ceiling at 0.15 and above. Raise it only behind a paired judged-answer run that holds. See docs/evaluation.md. |
 | `compression.max_tokens_per_chunk` | int | 160 | Maximum accepted tokens per summary; over-budget output falls back to full text. |
 
@@ -112,6 +115,7 @@ manifest lint` checks it. Paths resolve relative to the manifest file.
 | `license_class` | str | unknown | Redistribution rights: `public`, `open_commercial`, `open_noncommercial`, `restricted`, or `unknown`. Never drafted; `unknown` is excluded from any request that restricts rights. |
 | `license_source` | str \| NoneType | unset | The sentence or signal the license class was based on, kept as evidence. |
 | `source` | str | local | Your own grouping label, such as `journal_papers` or `agency_reports`. Becomes a retrieval filter. |
+| `extract_figures` | bool \| NoneType | unset | Optional per-document override (`true` or `false`) for extracting embedded PDF figures and captions into dedicated chunks. Unset uses `--extract-figures` or `SCI_RAG_EXTRACT_FIGURES`. |
 
 ## `domain/eval_seed_questions.jsonl`
 

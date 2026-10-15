@@ -260,6 +260,8 @@ def render_jsonl(entries: list[CorpusEntry], *, manifest_path: Path) -> str:
     lines = [RIGHTS_HEADER.rstrip("\n")]
     for entry in entries:
         row = entry.model_dump()
+        if row.get("extract_figures") is None:
+            row.pop("extract_figures", None)
         resolved = entry.path.resolve()
         row["path"] = str(resolved.relative_to(base) if resolved.is_relative_to(base) else resolved)
         lines.append(json.dumps(row, ensure_ascii=False))

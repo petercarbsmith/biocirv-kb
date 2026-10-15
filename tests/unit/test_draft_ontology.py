@@ -33,7 +33,7 @@ from sci_rag.draft.sampling import Passage, PassageSample
 from sci_rag.llm import MockLLM
 
 REPO_ROOT = Path(__file__).parents[2]
-DOMAIN_DIR = REPO_ROOT / "domain"
+DOMAIN_DIR = REPO_ROOT / "tests" / "fixtures" / "demo_domain"
 
 _SAMPLE = PassageSample(
     passages=(

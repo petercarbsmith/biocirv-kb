@@ -145,7 +145,7 @@
 [30.464,"o","\u001b[2m  docs/                  kit onboarding, player, and cast removed\u001b[0m\r\n"]
 [30.644,"o","\u001b[2m  Dockerfile             uv base image\u001b[0m\r\n"]
 [30.824,"o","\u001b[2m  .devcontainer/         ghcr.io/va-h/devcontainers-features/uv:1\u001b[0m\r\n"]
-[31.004,"o","\u001b[2m  rendered               6 files for uv\u001b[0m\r\n"]
+[31.004,"o","\u001b[2m  rendered               3 files for uv\u001b[0m\r\n"]
 [31.184,"o","\u001b[2m  data/corpus.jsonl      commented field shape, ready for your documents\u001b[0m\r\n"]
 [31.364,"o","\u001b[2m  LICENSE                BSD-3-Clause\u001b[0m\r\n"]
 [31.544,"o","\u001b[2m  README.md              rewritten opening\u001b[0m\r\n"]

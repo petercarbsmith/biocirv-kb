@@ -41,6 +41,7 @@ class CorpusEntry(BaseModel):
     license_class: str = "unknown"
     license_source: str | None = None
     source: str = "local"
+    extract_figures: bool | None = None
 
     @field_validator("license_class", mode="before")
     @classmethod

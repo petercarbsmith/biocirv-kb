@@ -179,13 +179,23 @@ def apply_seed_questions(answers: ProjectAnswers, root: Path) -> list[str]:
     """
     log: list[str] = []
     source = root / "domain" / "eval_seed_questions.jsonl"
-    bundled = source.read_text(encoding="utf-8") if source.exists() else ""
+    demo_target = root / DEMO_SEED_QUESTIONS
+    if demo_target.exists():
+        bundled = demo_target.read_text(encoding="utf-8")
+    elif source.exists():
+        bundled = source.read_text(encoding="utf-8")
+    else:
+        bundled = ""
 
     if answers.include_demo_corpus and bundled:
-        _write(root / DEMO_SEED_QUESTIONS, bundled)
+        _write(demo_target, bundled)
         log.append(_log(str(DEMO_SEED_QUESTIONS), "ground truth for the demo corpus"))
+    elif not answers.include_demo_corpus:
+        demo_target.unlink(missing_ok=True)
 
     if answers.corpus_source == "demo_only":
+        if bundled:
+            _write(source, bundled)
         log.append(_log("domain/eval_seed_questions.jsonl", "kept: the demo corpus is the corpus"))
         return log
 
@@ -549,6 +559,8 @@ def apply_corpus_scaffold(answers: ProjectAnswers, root: Path) -> list[str]:
         _write(root / "data" / "raw" / ".gitkeep", "")
         _write(root / "data" / "corpus.jsonl", CORPUS_MANIFEST_TEMPLATE)
         return [_log("data/corpus.jsonl", "commented field shape, ready for your documents")]
+
+    (root / "data" / "corpus.jsonl").unlink(missing_ok=True)
 
     if answers.corpus_source == "openalex_topic":
         command = (
@@ -1210,7 +1222,7 @@ def apply_docs(answers: ProjectAnswers, root: Path) -> list[str]:
     config = root / "mkdocs.yml"
     if config.exists():
         text = config.read_text(encoding="utf-8")
-        text = re.sub(r"(?ms)^extra_javascript:\n(?:[ #].*\n|\n(?=[ #]))*", "", text)
+        text = re.sub(r"(?m)^extra_javascript:\n(?:[ #].*\n|\n(?=[ #]))*", "", text)
         text = "\n".join(
             line
             for line in text.splitlines()

@@ -136,6 +136,7 @@ $ sci-rag ingest [OPTIONS] [PATH]
 | `--manifest, -m` | path | unset | A JSONL corpus manifest: one line per document with title, authors, and rights. |
 | `--source` | text | local | Source label recorded on documents ingested from a folder. |
 | `--no-docling` | boolean | false | Skip Docling even if installed (use the pypdf fallback). |
+| `--extract-figures, --no-extract-figures` | boolean | unset | Extract embedded PDF figures and captions into dedicated chunks (unless overridden per document in the manifest). |
 | `--chunk-tokens` | integer | 800 | Target tokens per chunk. |
 | `--overlap-tokens` | integer | 150 | Overlap tokens between chunks. |
 
@@ -160,6 +161,7 @@ $ sci-rag build [OPTIONS] [PATH]
 | `--manifest, -m` | path | unset | A JSONL corpus manifest: one line per document with title, authors, and rights. |
 | `--source` | text | local | Source label recorded on documents ingested from a folder. |
 | `--no-docling` | boolean | false | Skip Docling even if installed (use the pypdf fallback). |
+| `--extract-figures, --no-extract-figures` | boolean | unset | Extract embedded PDF figures and captions into dedicated chunks (unless overridden per document in the manifest). |
 | `--no-graph` | boolean | false | Stop after ingestion; skip the knowledge graph. |
 | `--batch-size` | integer | 10 | Chunks per graph-extraction model call. |
 

@@ -1,10 +1,37 @@
-# My Scientific KB
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Sci RAG Kit" width="560">
+</p>
 
-A short description of your domain.
+<p align="center">
+  <a href="https://github.com/sustainability-software-lab/sci-rag-kit/actions/workflows/ci.yml"><img src="https://github.com/sustainability-software-lab/sci-rag-kit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://sustainability-software-lab.github.io/sci-rag-kit/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-005bfd.svg" alt="Documentation"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="License: BSD-3-Clause"></a>
+  <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue" alt="Python 3.11 | 3.12">
+</p>
 
-Built from [Sci RAG Kit](https://github.com/sustainability-software-lab/sci-rag-kit): hybrid GraphRAG retrieval on PostgreSQL,
-grounded answers with citations, an evaluation harness, and REST plus MCP
-endpoints. What makes it this project rather than the kit lives in `domain/`.
+Retrieval-augmented generation, built around your scientific domain.
+
+Sci RAG Kit is a project template for question answering over scientific
+documents. It parses papers and reports, indexes their passages, runs five
+kinds of search, and measures retrieval against questions with known answers.
+With LLM provider credentials, it also builds a concept graph and writes answers
+that cite the passages they use. REST and MCP clients share the same service.
+Your project supplies the documents, the vocabulary of its field, and the
+questions used to score the result.
+
+Start a new project with two commands. `sci-rag new` asks a few questions and
+writes a configured, git-initialized project directory:
+
+```bash
+pipx install sci-rag-kit
+sci-rag new
+```
+
+To read the kit before creating a project, clone this repository and run the
+demo corpus (see [Set up](#set-up)). The
+[documentation site](https://sustainability-software-lab.github.io/sci-rag-kit/)
+has the guided path. The [quickstart](docs/quickstart.md) takes about ten
+minutes.
 
 ## Components
 

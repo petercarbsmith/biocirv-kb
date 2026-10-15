@@ -3,6 +3,7 @@ from sci_rag.ingest.ingester import IngestOutcome, IngestReport, ingest_entries
 from sci_rag.ingest.manifest import CorpusEntry, discover_folder, load_manifest
 from sci_rag.ingest.parsers import (
     Block,
+    ExtractedFigure,
     ParsedDocument,
     docling_available,
     parse_file,
@@ -13,6 +14,7 @@ __all__ = [
     "Block",
     "ChunkDraft",
     "CorpusEntry",
+    "ExtractedFigure",
     "IngestOutcome",
     "IngestReport",
     "ParsedDocument",

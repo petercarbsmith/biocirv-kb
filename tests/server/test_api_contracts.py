@@ -321,3 +321,68 @@ async def test_the_mcp_mount_accepts_the_fallback_header_too(secured_client) -> 
     response = await secured_client.post("/mcp", headers={"X-API-Key": "full-key"})
 
     assert response.status_code != 401
+
+
+async def test_figure_image_endpoint_and_license_scope(
+    service, client, secured_client, tmp_path
+) -> None:  # type: ignore[no-untyped-def]
+    """Figure image proxy enforces corpus:read and parent document license scope."""
+    from sqlalchemy import select
+
+    from sci_rag.db import Chunk, Document, DocumentFigure, session_scope
+    from sci_rag.ingest.image_store import LocalImageStore
+    from sci_rag.ingest.parsers import encode_rgb_png
+
+    store = LocalImageStore(tmp_path / "figures")
+    service._image_store = store
+    png_bytes = encode_rgb_png(100, 100, b"\x20\x60\xa0" * (100 * 100))
+
+    async with session_scope() as db:
+        doc = (await db.execute(select(Document).limit(1))).scalar_one()
+        chunk = (
+            await db.execute(select(Chunk).where(Chunk.document_id == doc.id).limit(1))
+        ).scalar_one()
+        chunk.is_figure = True
+        uri = await store.put_figure(doc.id, 0, png_bytes)
+        fig = DocumentFigure(
+            document_id=doc.id,
+            chunk_id=chunk.id,
+            figure_index=0,
+            figure_label="Figure 1",
+            page_number=2,
+            caption="Figure 1: Residue yield across counties.",
+            image_uri=uri,
+            image_sha256="deadbeef" * 8,
+            width=100,
+            height=100,
+        )
+        db.add(fig)
+        await db.flush()
+        fig_id = fig.id
+
+    ok = await client.get(f"/v1/figures/{fig_id}/image")
+    assert ok.status_code == 200
+    assert ok.headers["content-type"] == "image/png"
+    assert ok.content == png_bytes
+
+    out_of_scope = await client.get(
+        f"/v1/figures/{fig_id}/image", params={"license_classes": ["internal"]}
+    )
+    assert out_of_scope.status_code == 404
+    assert out_of_scope.json()["code"] == "figure_not_found"
+
+    missing = await client.get("/v1/figures/nonexistent-figure/image")
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "figure_not_found"
+
+    forbidden = await secured_client.get(
+        f"/v1/figures/{fig_id}/image", headers={"X-API-Key": "query-key"}
+    )
+    assert forbidden.status_code == 403
+    assert forbidden.json()["code"] == "insufficient_scope"
+
+    authed = await secured_client.get(
+        f"/v1/figures/{fig_id}/image", headers={"X-API-Key": "full-key"}
+    )
+    assert authed.status_code == 200
+    assert authed.content == png_bytes

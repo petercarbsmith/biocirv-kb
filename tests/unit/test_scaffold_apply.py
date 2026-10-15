@@ -316,8 +316,12 @@ def test_doi_list_make_target_points_at_the_doi_file(template: Path) -> None:
 
 
 def test_demo_only_corpus_adds_no_corpus_target(template: Path) -> None:
+    (template / "data" / "corpus.jsonl").write_text(
+        '{"path": "raw/missing.pdf"}\n', encoding="utf-8"
+    )
     apply.apply_corpus_scaffold(_answers(corpus_source="demo_only"), template)
     assert "corpus:" not in (template / "Makefile").read_text(encoding="utf-8")
+    assert not (template / "data" / "corpus.jsonl").exists()
 
 
 # --- pruning ----------------------------------------------------------------
@@ -660,3 +664,17 @@ def test_a_bsd_project_gets_no_notice_advice_it_does_not_need(template: Path) ->
 
     assert "A Scientist" in (template / "LICENSE").read_text(encoding="utf-8")
     assert "NOTICE" not in " ".join(changes)
+
+
+def test_apply_docs_strips_extra_javascript_without_swallowing_extra_css_or_extra(
+    template: Path,
+) -> None:
+    shutil.copy(REPO_ROOT / "mkdocs.yml", template / "mkdocs.yml")
+    apply.apply_docs(_answers(), template)
+    mkdocs_text = (template / "mkdocs.yml").read_text(encoding="utf-8")
+    assert "extra_javascript:" not in mkdocs_text
+    assert "asciinema-player" not in mkdocs_text
+    assert "extra_css:" in mkdocs_text
+    assert "stylesheets/tokens.css" in mkdocs_text
+    assert "extra:" in mkdocs_text
+    assert 'package_version: "0.5.0"' in mkdocs_text

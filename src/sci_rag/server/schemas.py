@@ -91,6 +91,11 @@ class RetrievedItemModel(BaseModel):
     license_class: str
     source: str
     is_table: bool = False
+    is_figure: bool = False
+    figure_id: str | None = None
+    figure_label: str | None = None
+    page_number: int | None = None
+    image_url: str | None = None
 
 
 class QueryResponse(BaseModel):
@@ -157,6 +162,11 @@ class CitationModel(BaseModel):
     chunk_id: str | None
     section_path: str | None
     cited: bool
+    is_figure: bool = False
+    figure_id: str | None = None
+    figure_label: str | None = None
+    page_number: int | None = None
+    image_url: str | None = None
 
 
 class AnswerResponse(BaseModel):
@@ -196,6 +206,7 @@ class ChunkPreview(BaseModel):
     chunk_index: int
     section_path: str | None
     is_table: bool
+    is_figure: bool = False
     preview: str
 
 

@@ -47,6 +47,11 @@ class SourceCitation:
     chunk_id: str | None
     section_path: str | None
     cited: bool = False
+    is_figure: bool = False
+    figure_id: str | None = None
+    figure_label: str | None = None
+    page_number: int | None = None
+    image_uri: str | None = None
 
 
 @dataclass
@@ -286,6 +291,11 @@ class AnswerEngine:
                 document_id=item.document_id,
                 chunk_id=item.id if item.kind == "chunk" else None,
                 section_path=item.section_path,
+                is_figure=item.is_figure,
+                figure_id=item.figure_id,
+                figure_label=item.figure_label,
+                page_number=item.page_number,
+                image_uri=item.image_uri,
             )
             for i, item in enumerate(prompt_retrieval.items, start=1)
         ]
@@ -329,6 +339,15 @@ class AnswerEngine:
                         "chunk_id": s.chunk_id,
                         "section_path": s.section_path,
                         "cited": s.cited,
+                        "is_figure": s.is_figure,
+                        "figure_id": s.figure_id,
+                        "figure_label": s.figure_label,
+                        "page_number": s.page_number,
+                        "image_url": (
+                            f"/v1/figures/{s.figure_id}/image"
+                            if s.figure_id and s.image_uri
+                            else None
+                        ),
                     }
                     for s in sources
                 ],
@@ -354,6 +373,11 @@ def format_sources(retrieval: RetrievalResult) -> str:
         header = f"[{i}] {item.title}"
         if item.section_path:
             header += f" ({item.section_path})"
+        if item.is_figure:
+            fig_tag = item.figure_label or "Figure"
+            if item.page_number is not None:
+                fig_tag += f", Page {item.page_number}"
+            header += f" [{fig_tag}]"
         if item.kind == "community":
             header += " [knowledge graph overview]"
         if item.citation:

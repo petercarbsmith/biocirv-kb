@@ -25,7 +25,7 @@ async def _stamp_alembic_revision() -> None:
             text("CREATE TABLE IF NOT EXISTS alembic_version (version_num varchar(32) PRIMARY KEY)")
         )
         await conn.execute(text("DELETE FROM alembic_version"))
-        await conn.execute(text("INSERT INTO alembic_version VALUES ('0006')"))
+        await conn.execute(text("INSERT INTO alembic_version VALUES ('0007')"))
 
 
 async def test_doctor_reports_outdated_schema_before_new_column_queries(clean_tables) -> None:  # type: ignore[no-untyped-def]
@@ -55,7 +55,7 @@ async def test_doctor_reports_outdated_schema_before_new_column_queries(clean_ta
                     "ON kg_entities (canonical_entity_id)"
                 )
             )
-            await conn.execute(text("UPDATE alembic_version SET version_num = '0006'"))
+            await conn.execute(text("UPDATE alembic_version SET version_num = '0007'"))
 
 
 def _by_name(checks) -> dict[str, object]:  # type: ignore[no-untyped-def]
@@ -123,7 +123,7 @@ async def test_doctor_with_corpus_flags_missing_graph(clean_tables, local_embedd
 
 
 async def test_doctor_passes_for_an_offline_project_with_a_corpus(
-    clean_tables, local_embedder
+    clean_tables, local_embedder, monkeypatch, tmp_path
 ) -> None:  # type: ignore[no-untyped-def]
     """The state the wizard writes for `credentials: offline` is not a failure.
 
@@ -137,7 +137,17 @@ async def test_doctor_passes_for_an_offline_project_with_a_corpus(
     entries = load_manifest(REPO_ROOT / "data" / "demo" / "manifest.jsonl")
     await ingest_entries(entries, embedder=local_embedder)
 
-    checks = await _run_checks(probe=False)
+    from sci_rag.config import reset_settings_cache
+
+    monkeypatch.setenv("SCI_RAG_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SCI_RAG_DOMAIN_DIR", str(DEMO_DOMAIN_DIR))
+    reset_settings_cache()
+    try:
+        checks = await _run_checks(probe=False)
+    finally:
+        monkeypatch.delenv("SCI_RAG_DATA_DIR", raising=False)
+        monkeypatch.delenv("SCI_RAG_DOMAIN_DIR", raising=False)
+        reset_settings_cache()
     by_name = _by_name(checks)
 
     failures = {check.name: check.detail for check in checks if check.status == "fail"}

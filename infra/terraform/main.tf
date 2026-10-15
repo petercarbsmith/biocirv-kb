@@ -251,6 +251,10 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "SCI_RAG_GCP_LOCATION"
         value = var.model_location
       }
+      env {
+        name  = "SCI_RAG_IMAGE_BUCKET"
+        value = google_storage_bucket.corpus.name
+      }
 
       volume_mounts {
         name       = "cloudsql"
@@ -337,6 +341,10 @@ resource "google_cloud_run_v2_job" "ops" {
         env {
           name  = "SCI_RAG_GCP_LOCATION"
           value = var.model_location
+        }
+        env {
+          name  = "SCI_RAG_IMAGE_BUCKET"
+          value = google_storage_bucket.corpus.name
         }
 
         volume_mounts {

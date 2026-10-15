@@ -18,7 +18,7 @@ from sci_rag.evals.retrieval_eval import DEFAULT_ABLATIONS
 from sci_rag.llm import MockLLM
 from sci_rag.retrieve.router import RoutingDecision, route
 
-DOMAIN_DIR = Path(__file__).parents[2] / "domain"
+DOMAIN_DIR = Path(__file__).parents[2] / "tests" / "fixtures" / "demo_domain"
 
 
 @pytest.fixture(scope="module")

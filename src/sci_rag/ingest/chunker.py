@@ -11,12 +11,16 @@ whether a numerical table survives in one piece. This chunker keeps both:
    path, e.g. "2 Methods > 2.1 Feedstock handling".
 4. Detect table-like paragraphs (pipes, tab columns, aligned grids) and
    emit each table as its own intact chunk.
-5. Merge ordinary paragraphs up to a target token budget, splitting
+5. When ``extract_figures=True`` (or when structured figure blocks are
+   present), isolate each figure caption and its prose mentions into a
+   dedicated ``is_figure=True`` chunk without carrying overlap into or out
+   of the figure.
+6. Merge ordinary paragraphs up to a target token budget, splitting
    oversized paragraphs on sentence boundaries, and never merging across a
    section boundary.
-6. Carry a tail of trailing overlap into the next prose chunk so no idea is
+7. Carry a tail of trailing overlap into the next prose chunk so no idea is
    stranded on a boundary.
-7. Prepend the document title and section path to every chunk, so each one
+8. Prepend the document title and section path to every chunk, so each one
    makes sense (and embeds well) on its own.
 
 Defaults (800-token target, 150-token overlap) suit dense technical PDFs;
@@ -26,8 +30,15 @@ both are parameters.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+from sci_rag.ingest.figures import (
+    ExtractedFigure,
+    format_figure_body,
+    looks_like_figure_caption,
+    populate_figure_blocks,
+)
 from sci_rag.ingest.parsers import Block, ParsedDocument
 from sci_rag.ingest.tokens import count_tokens
 
@@ -39,12 +50,26 @@ class ChunkDraft:
     token_count: int
     section_path: str | None
     is_table: bool
+    is_figure: bool = False
+    figure: ExtractedFigure | None = None
 
 
 def chunk_document(
-    doc: ParsedDocument, *, target_tokens: int = 800, overlap_tokens: int = 150
+    doc: ParsedDocument,
+    *,
+    target_tokens: int = 800,
+    overlap_tokens: int = 150,
+    extract_figures: bool = False,
 ) -> list[ChunkDraft]:
-    blocks = doc.blocks if doc.blocks is not None else _segment_raw_text(doc.raw_text or "")
+    blocks = (
+        doc.blocks
+        if doc.blocks is not None
+        else _segment_raw_text(
+            doc.raw_text or "",
+            extract_figures=extract_figures or bool(doc.figures),
+            extracted_figures=doc.figures,
+        )
+    )
     return _chunk_blocks(
         blocks, title=doc.title, target_tokens=target_tokens, overlap_tokens=overlap_tokens
     )
@@ -57,34 +82,113 @@ def chunk_document(
 _PAGE_NUMBER_LINE = re.compile(r"^\s*\d{1,4}\s*$", flags=re.MULTILINE)
 _HYPHEN_BREAK = re.compile(r"([a-z])-\n([a-z])")
 _NUMBERED_HEADING = re.compile(r"^(\d+(?:\.\d+)*)[.)]?\s+\S")
+_INLINE_CAPTION_SPLIT = re.compile(
+    r"(?<=[.!?\)])\s+(?=(?i:Figure|Fig\.?|Scheme)\s*"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
+    r"(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)(?:(?i:Figures?|Figs?\.?|Schemes?)\s+)?"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+))*"
+    r"\s*[\.\:\-\u2013\u2014]\s+[A-Z])"
+)
+_CAPTION_FIRST_SENTENCE = re.compile(
+    r"^(\s*(?i:Figure|Fig\.?|Scheme)\s*"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
+    r"(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)(?:(?i:Figures?|Figs?\.?|Schemes?)\s+)?"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+))*"
+    r"\s*[\.\:\-\u2013\u2014]\s+[^.!?]+[.!?])\s+([A-Z].*)$"
+)
 
 
 def _normalize(text: str) -> str:
-    text = text.replace("\x00", "").replace("\r\n", "\n").replace("\f", "\n\n")
+    text = text.replace("\x00", "").replace("\r\n", "\n")
+    if text.count("\n \n") > 20:
+        text = re.sub(r"\n \n \n+", "\n\n", text)
+        text = re.sub(r"\n \n", " ", text)
+    text = text.replace("\f", "\n\n")
     text = _HYPHEN_BREAK.sub(r"\1\2", text)
     text = _PAGE_NUMBER_LINE.sub("", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
-def _segment_raw_text(raw: str) -> list[Block]:
+def _segment_raw_text(
+    raw: str,
+    *,
+    extract_figures: bool = False,
+    extracted_figures: Sequence[ExtractedFigure] | None = None,
+) -> list[Block]:
     blocks: list[Block] = []
-    for para in _normalize(raw).split("\n\n"):
-        para = para.strip()
-        if not para:
-            continue
-        if _looks_like_table(para):
-            blocks.append(Block(kind="table", text=para))
-            continue
-        heading_level = _heading_level(para)
-        if heading_level:
-            blocks.append(Block(kind="heading", text=para.strip(), level=heading_level))
-            continue
-        # Reflow internal line breaks into spaces; drop tiny fragments that
-        # are almost always extraction noise.
-        flowed = re.sub(r"\s*\n\s*", " ", para).strip()
-        if len(flowed) >= 20:
-            blocks.append(Block(kind="text", text=flowed))
+    fig_list = list(extracted_figures or [])
+    used_fig_indices: set[int] = set()
+    has_page_breaks = "\f" in raw and any(f.page_number is not None for f in fig_list)
+    raw_pages = raw.split("\f") if has_page_breaks else [raw]
+
+    def _match_figure_for_page(page_no: int | None) -> ExtractedFigure | None:
+        if page_no is not None:
+            for idx, fig in enumerate(fig_list):
+                if idx not in used_fig_indices and fig.page_number == page_no:
+                    used_fig_indices.add(idx)
+                    return fig
+            for idx, fig in enumerate(fig_list):
+                if idx not in used_fig_indices and fig.page_number == page_no - 1:
+                    used_fig_indices.add(idx)
+                    return fig
+            return None
+        for idx, fig in enumerate(fig_list):
+            if idx not in used_fig_indices:
+                used_fig_indices.add(idx)
+                return fig
+        return None
+
+    for page_idx, page_raw in enumerate(raw_pages, start=1):
+        page_no = page_idx if has_page_breaks else None
+        for raw_para in _normalize(page_raw).split("\n\n"):
+            raw_para = raw_para.strip()
+            if not raw_para:
+                continue
+            if _looks_like_table(raw_para):
+                blocks.append(Block(kind="table", text=raw_para))
+                continue
+            heading_level = _heading_level(raw_para)
+            if heading_level:
+                blocks.append(Block(kind="heading", text=raw_para.strip(), level=heading_level))
+                continue
+            flowed_full = re.sub(r"\s*\n\s*", " ", raw_para).strip()
+            sub_paras = (
+                _INLINE_CAPTION_SPLIT.split(flowed_full) if extract_figures else [flowed_full]
+            )
+            for flowed in sub_paras:
+                flowed = flowed.strip()
+                if not flowed:
+                    continue
+                if extract_figures and looks_like_figure_caption(flowed):
+                    trailing_prose = ""
+                    if len(flowed) > 220:
+                        m_cap = _CAPTION_FIRST_SENTENCE.match(flowed)
+                        if m_cap and len(m_cap.group(2)) >= 80:
+                            flowed = m_cap.group(1).strip()
+                            trailing_prose = m_cap.group(2).strip()
+                    matched_fig = _match_figure_for_page(page_no)
+                    if matched_fig is not None and not matched_fig.caption:
+                        matched_fig.caption = flowed
+                    blocks.append(Block(kind="figure", text=flowed, figure=matched_fig))
+                    if len(trailing_prose) >= 20:
+                        blocks.append(Block(kind="text", text=trailing_prose))
+                    continue
+                if len(flowed) >= 20:
+                    blocks.append(Block(kind="text", text=flowed))
+
+    if extract_figures:
+        if not has_page_breaks:
+            for idx, leftover in enumerate(fig_list):
+                if idx not in used_fig_indices and (leftover.caption or leftover.png_bytes):
+                    blocks.append(
+                        Block(
+                            kind="figure",
+                            text=leftover.caption or (leftover.figure_label or "Figure"),
+                            figure=leftover,
+                        )
+                    )
+        blocks = populate_figure_blocks(blocks)
     return blocks
 
 
@@ -242,6 +346,7 @@ def _chunk_blocks(
                 token_count=count_tokens(content),
                 section_path=section,
                 is_table=is_table,
+                is_figure=False,
             )
         )
         # A chunk hands its tail to the next chunk so no idea is stranded on
@@ -250,6 +355,28 @@ def _chunk_blocks(
             pending_overlap = _overlap_tail_lines(body, overlap_tokens)
         else:
             pending_overlap = _overlap_tail(body, overlap_tokens)
+
+    def finalize_figure(block: Block) -> None:
+        nonlocal pending_overlap
+        body = format_figure_body(block).strip()
+        if not body:
+            return
+        section = tracker.path()
+        breadcrumb = title if not section else f"{title} > {section}"
+        content = f"{breadcrumb}\n\n{body}"
+        chunks.append(
+            ChunkDraft(
+                content=content,
+                body=body,
+                token_count=count_tokens(content),
+                section_path=section,
+                is_table=False,
+                is_figure=True,
+                figure=block.figure,
+            )
+        )
+        # Figures are self-contained units and do not hand overlap into prose.
+        pending_overlap = ""
 
     def flush_buffer() -> None:
         nonlocal buffer, buffer_tokens
@@ -275,6 +402,10 @@ def _chunk_blocks(
         if block.kind == "table":
             flush_buffer()
             finalize(block.text, is_table=True)
+            continue
+        if block.kind == "figure":
+            flush_buffer()
+            finalize_figure(block)
             continue
         for piece in _split_oversized(block.text, target_tokens):
             piece_tokens = count_tokens(piece)
