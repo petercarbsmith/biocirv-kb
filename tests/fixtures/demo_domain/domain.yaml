@@ -3,12 +3,15 @@
 # eval_seed_questions.jsonl are the ONLY things you edit to point the kit at
 # a new scientific field. See domain/README.md for a guided walkthrough.
 #
-# Written by the sci-rag setup wizard. Re-run it with `sci-rag init`, or just
-# edit this file: it is validated by the same model the kit reads it with.
+# This template ships configured for the demo domain: agricultural residues
+# and their conversion to fuels and products. Replace it with your own.
 # ---------------------------------------------------------------------------
 
-name: My Scientific KB
-description: A short description of your domain.
+name: "Agricultural Residue Knowledge Base"
+description: >
+  Availability, characteristics, and conversion pathways of agricultural
+  residues (orchard prunings, straws, hulls, and similar) for fuels and
+  bioproducts.
 entity_types:
 - name: Feedstock
   description: A biomass or residue stream (almond prunings, rice straw, walnut shells)
@@ -125,6 +128,6 @@ retrieval:
     timeout_s: 15.0
     model: null
 compression:
-  enabled: false
+  enabled: true
   relevance_floor: 0.0
   max_tokens_per_chunk: 160

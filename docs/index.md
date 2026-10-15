@@ -235,7 +235,7 @@ The Quick session above, in full. `scripts/render_cast.py` builds it by driving 
 <span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  docs/                  kit onboarding, player, and cast removed</span></span>
 <span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  Dockerfile             uv base image</span></span>
 <span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  .devcontainer/         ghcr.io/va-h/devcontainers-features/uv:1</span></span>
-<span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  rendered               6 files for uv</span></span>
+<span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  rendered               3 files for uv</span></span>
 <span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  data/corpus.jsonl      commented field shape, ready for your documents</span></span>
 <span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  LICENSE                BSD-3-Clause</span></span>
 <span class="srag-term__line srag-term__line--status"><span class="srag-term__status">  README.md              rewritten opening</span></span>

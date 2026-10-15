@@ -16,7 +16,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE chunks ADD COLUMN IF NOT EXISTS is_figure BOOLEAN NOT NULL DEFAULT false")
+    op.execute(
+        "ALTER TABLE chunks ADD COLUMN IF NOT EXISTS is_figure BOOLEAN NOT NULL DEFAULT false"
+    )
     op.execute(
         "CREATE TABLE IF NOT EXISTS document_figures ("
         "id VARCHAR(32) PRIMARY KEY, "
@@ -39,8 +41,7 @@ def upgrade() -> None:
         "ON document_figures (document_id)"
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_document_figures_chunk_id "
-        "ON document_figures (chunk_id)"
+        "CREATE INDEX IF NOT EXISTS ix_document_figures_chunk_id ON document_figures (chunk_id)"
     )
 
 

@@ -29,12 +29,15 @@ IMAGE_PLACEHOLDER = "<!-- image -->"
 # Minimum pixel dimension on BOTH axes to keep an extracted image (filters logos/icons/rules).
 MIN_FIGURE_DIMENSION = 100
 
-_FIG_NUM_PAT = r"(?:[SsA-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
+_FIG_NUM_PAT = r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
+_FIG_COMPOUND_TAIL_PAT = (
+    rf"(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)(?:(?i:Figures?|Figs?\.?|Schemes?)\s+)?{_FIG_NUM_PAT})*"
+)
 
 _FIGURE_CAPTION_RE = re.compile(
-    rf"^\s*(?:\*\*|__)?(?P<kind>(?i:Figure|Fig\.?|Scheme))\s*"
+    rf"^\s*(?:\*\*|__)?(?P<kind>(?i:Figures?|Figs?\.?|Schemes?))\s*"
     rf"(?P<num>{_FIG_NUM_PAT})"
-    rf"(?:\s*(?:,|and)\s*(?i:Figures?|Figs?\.?|Schemes?)?\s*{_FIG_NUM_PAT})*"
+    rf"{_FIG_COMPOUND_TAIL_PAT}"
     rf"(?:\*\*|__)?(?:\s*[\.\:\-\u2013\u2014]|\s+[A-Z])",
 )
 _FIGURE_LABEL_SEARCH_RE = re.compile(

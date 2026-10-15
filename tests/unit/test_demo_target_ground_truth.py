@@ -40,7 +40,7 @@ def template(tmp_path: Path) -> Path:
     root.mkdir(parents=True)
     for name in ("pyproject.toml", "Makefile", ".env.example", "README.md", "uv.lock"):
         shutil.copy(REPO_ROOT / name, root / name)
-    shutil.copytree(REPO_ROOT / "domain", root / "domain")
+    shutil.copytree(REPO_ROOT / "tests" / "fixtures" / "demo_domain", root / "domain")
     shutil.copytree(REPO_ROOT / "data" / "demo", root / "data" / "demo")
     (root / "infra" / "terraform").mkdir(parents=True)
     (root / "infra" / "terraform" / "main.tf").write_text("# terraform\n", encoding="utf-8")

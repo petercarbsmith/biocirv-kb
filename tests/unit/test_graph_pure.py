@@ -5,7 +5,7 @@ import pytest
 from sci_rag.domain import load_domain
 from sci_rag.graph import detect_communities, parse_extraction
 
-DOMAIN = load_domain(Path(__file__).parents[2] / "domain")
+DOMAIN = load_domain(Path(__file__).parents[2] / "tests" / "fixtures" / "demo_domain")
 
 
 def test_parse_extraction_keeps_valid_and_canonicalizes_types() -> None:

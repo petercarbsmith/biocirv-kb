@@ -80,7 +80,7 @@ transport adding 0.32 dollars per dry ton-mile to the delivered cost.
 def _project(tmp_path: Path) -> Path:
     """A scratch project: the shipped domain profile and two raw documents."""
     root = tmp_path / "project"
-    shutil.copytree(REPO_ROOT / "domain", root / "domain")
+    shutil.copytree(REPO_ROOT / "tests" / "fixtures" / "demo_domain", root / "domain")
     raw = root / "data" / "raw"
     raw.mkdir(parents=True)
     (raw / "colusa-rice-straw.md").write_text(_RICE, encoding="utf-8")

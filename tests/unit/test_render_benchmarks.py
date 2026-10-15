@@ -18,6 +18,16 @@ CORPUS_DIGEST = "b" * 64
 GRAPH_DIGEST = "d" * 64
 
 
+@pytest.fixture(autouse=True)
+def _use_demo_domain(monkeypatch: pytest.MonkeyPatch) -> None:
+    from sci_rag.config import get_settings
+
+    monkeypatch.setenv(
+        "SCI_RAG_DOMAIN_DIR", str(Path(__file__).parents[2] / "tests" / "fixtures" / "demo_domain")
+    )
+    get_settings.cache_clear()
+
+
 def artifact_fixture() -> dict:
     return {
         "schema_version": 1,

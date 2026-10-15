@@ -11,6 +11,8 @@ docs_dir: docs
 exclude_docs: |
   planning/
   assets/branding/README.md
+  assets/vendor/asciinema-player/README.md
+  assets/vendor/asciinema-player/LICENSE
 not_in_nav: |
   examples/demo-eval/*.md
   ROADMAP.md
@@ -143,3 +145,33 @@ markdown_extensions:
       alternate_style: true
   - pymdownx.tasklist:
       custom_checkbox: true
+
+extra_javascript:
+  # Vendored, not a CDN: the docs build stays hermetic and the offline link
+  # check can see the asset. See docs/assets/vendor/asciinema-player/README.md.
+  - assets/vendor/asciinema-player/asciinema-player.min.js
+  - javascripts/cast.js
+
+extra_css:
+  - assets/vendor/asciinema-player/asciinema-player.css
+  - stylesheets/tokens.css
+  - stylesheets/typography.css
+  - stylesheets/components.css
+  - stylesheets/code.css
+  - stylesheets/diagrams.css
+  - stylesheets/home.css
+
+extra:
+  generator: false
+  redirects:
+    tour.md: get-started.md#full-project-structure
+    llm-assisted-setup.md: bring-your-own-domain.md#drafting-with-a-model
+    api-clients.md: api.md#generated-clients
+    citation.md: project.md#how-to-cite
+    evidence-and-rights.md: methodology.md#7-scope-precedes-ranking
+  # Pinned to pyproject by tests/unit/test_release_version_claims.py.
+  package_version: "0.5.0"
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sustainability-software-lab/sci-rag-kit
+      name: Sci RAG Kit on GitHub

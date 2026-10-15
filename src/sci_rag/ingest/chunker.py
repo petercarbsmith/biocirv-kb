@@ -84,16 +84,16 @@ _HYPHEN_BREAK = re.compile(r"([a-z])-\n([a-z])")
 _NUMBERED_HEADING = re.compile(r"^(\d+(?:\.\d+)*)[.)]?\s+\S")
 _INLINE_CAPTION_SPLIT = re.compile(
     r"(?<=[.!?\)])\s+(?=(?i:Figure|Fig\.?|Scheme)\s*"
-    r"(?:[SsA-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
-    r"(?:\s*(?:,|and)\s*(?i:Figures?|Figs?\.?|Schemes?)?\s*"
-    r"(?:[SsA-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+))*"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
+    r"(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)(?:(?i:Figures?|Figs?\.?|Schemes?)\s+)?"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+))*"
     r"\s*[\.\:\-\u2013\u2014]\s+[A-Z])"
 )
 _CAPTION_FIRST_SENTENCE = re.compile(
     r"^(\s*(?i:Figure|Fig\.?|Scheme)\s*"
-    r"(?:[SsA-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
-    r"(?:\s*(?:,|and)\s*(?i:Figures?|Figs?\.?|Schemes?)?\s*"
-    r"(?:[SsA-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+))*"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+)"
+    r"(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)(?:(?i:Figures?|Figs?\.?|Schemes?)\s+)?"
+    r"(?:[A-Za-z]?\d+(?:[\-\.]\d+)*[A-Za-z]?|[IVX]+))*"
     r"\s*[\.\:\-\u2013\u2014]\s+[^.!?]+[.!?])\s+([A-Z].*)$"
 )
 

@@ -29,7 +29,7 @@ def test_configuration_reference_matches_complete_env_example() -> None:
     assert "`SCI_RAG_EXTRACTION_MODEL`" in page
     assert "`SCI_RAG_CORS_ORIGINS`" in page
     assert "`retrieval.reranker.timeout_s`" in page
-    assert "| `compression.enabled` | bool | true |" in page
+    assert "| `compression.enabled` | bool | false |" in page
 
 
 def test_generated_pages_spell_the_display_name_without_a_hyphen() -> None:

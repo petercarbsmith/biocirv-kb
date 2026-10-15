@@ -25,6 +25,7 @@ from sci_rag.domain import CompressionTuning, load_domain
 
 ROOT = Path(__file__).resolve().parents[2]
 DOMAIN_DIR = ROOT / "domain"
+DEMO_DOMAIN_DIR = ROOT / "tests" / "fixtures" / "demo_domain"
 METHODOLOGY = ROOT / "docs" / "methodology.md"
 ARCHITECTURE = ROOT / "docs" / "architecture.md"
 EVALUATION = ROOT / "docs" / "evaluation.md"
@@ -136,11 +137,11 @@ def _assert_prose_matches(
 def test_compression_prose_matches_the_shipped_demo_default() -> None:
     _assert_prose_matches(
         pages=DEMO_CLAIM_PAGES,
-        enabled=load_domain(DOMAIN_DIR).config.compression.enabled,
+        enabled=load_domain(DEMO_DOMAIN_DIR).config.compression.enabled,
         on_phrases=DEMO_COMPRESSES,
         off_phrases=DEMO_DOES_NOT_COMPRESS,
         subject="for the shipped demo",
-        source="domain/domain.yaml",
+        source="tests/fixtures/demo_domain/domain.yaml",
     )
 
 
@@ -159,11 +160,11 @@ def test_compression_summary_pages_match_the_shipped_demo_default() -> None:
     pages = (ROADMAP, BENCHMARKS)
     _assert_prose_matches(
         pages=pages,
-        enabled=load_domain(DOMAIN_DIR).config.compression.enabled,
+        enabled=load_domain(DEMO_DOMAIN_DIR).config.compression.enabled,
         on_phrases=SUMMARY_COMPRESSES,
         off_phrases=SUMMARY_DOES_NOT_COMPRESS,
         subject="for the shipped demo",
-        source="domain/domain.yaml",
+        source="tests/fixtures/demo_domain/domain.yaml",
     )
     for page in pages:
         hedges = [phrase for phrase in SUMMARY_HEDGES if phrase in _text(page)]

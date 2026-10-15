@@ -15,7 +15,7 @@ def _make_copy(tmp_path: Path) -> Path:
     (copy / "scripts").mkdir(parents=True)
     shutil.copy(REPO_ROOT / "scripts" / "init_domain.py", copy / "scripts" / "init_domain.py")
     shutil.copy(REPO_ROOT / "pyproject.toml", copy / "pyproject.toml")
-    shutil.copytree(REPO_ROOT / "domain", copy / "domain")
+    shutil.copytree(REPO_ROOT / "tests" / "fixtures" / "demo_domain", copy / "domain")
     return copy
 
 

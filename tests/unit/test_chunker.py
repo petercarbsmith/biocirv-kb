@@ -162,3 +162,21 @@ def test_figures_are_isolated_and_carry_mention_context() -> None:
     for prose in prose_chunks:
         assert "[Figure 1]" not in prose.content
         assert "Spatial residue yield map for almond" not in prose.content
+
+
+def test_compound_figure_captions_and_no_exponential_backtracking() -> None:
+    from sci_rag.ingest.chunker import _CAPTION_FIRST_SENTENCE, _INLINE_CAPTION_SPLIT
+    from sci_rag.ingest.figures import looks_like_figure_caption
+
+    assert looks_like_figure_caption("Figure 1, 2, and 3: Biomass yield by county.")
+    assert looks_like_figure_caption("Figures 2-1 and Fig. 2-2. Pretreatment mass balance.")
+
+    for adversarial in (
+        ".Figure0" + ", 0" * 50 + "!",
+        ".Figure0" + ",figs0" * 50 + "!",
+        "Figure0" + ",figures0" * 50 + "!",
+        "Figure0" + ",schemes0" * 50 + "!",
+    ):
+        assert _INLINE_CAPTION_SPLIT.search(adversarial) is None
+        assert _CAPTION_FIRST_SENTENCE.match(adversarial) is None
+        assert not looks_like_figure_caption(adversarial)
