@@ -81,7 +81,7 @@ jobs:
 
       # micromamba rather than a full conda: this needs two packages, and the
       # action caches them, so the leg stays close to a uv one in cost.
-      - uses: mamba-org/setup-micromamba@v2
+      - uses: mamba-org/setup-micromamba@v3
         with:
           environment-name: pgserver
           condarc: |
