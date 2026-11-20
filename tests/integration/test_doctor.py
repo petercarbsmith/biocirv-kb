@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 from sqlalchemy import text, update
+from tests.integration.conftest import build_demo_domain
 
 from sci_rag.cli.doctor import _run_checks
+from sci_rag.config import reset_settings_cache
 from sci_rag.db import Document, KgEntity, get_engine, get_session_factory
 from sci_rag.ingest import ingest_entries, load_manifest
 
@@ -121,8 +125,38 @@ async def test_doctor_with_corpus_flags_missing_graph(clean_tables, local_embedd
     assert "graph extract" in checks["knowledge graph"].fix
 
 
+@pytest.fixture()
+def demo_doctor_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
+    """Point doctor at the shipped demo domain and an empty data directory."""
+    domain_dir = tmp_path / "domain"
+    domain_dir.mkdir()
+    demo = build_demo_domain()
+    (domain_dir / "domain.yaml").write_text(
+        yaml.safe_dump(demo.config.model_dump(mode="json"), sort_keys=False),
+        encoding="utf-8",
+    )
+    shutil.copy2(
+        REPO_ROOT / "data" / "demo" / "eval_seed_questions.jsonl",
+        domain_dir / "eval_seed_questions.jsonl",
+    )
+    shutil.copytree(REPO_ROOT / "domain" / "prompts", domain_dir / "prompts")
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    monkeypatch.setenv("SCI_RAG_DOMAIN_DIR", str(domain_dir))
+    monkeypatch.setenv("SCI_RAG_DATA_DIR", str(data_dir))
+    reset_settings_cache()
+    try:
+        yield
+    finally:
+        monkeypatch.delenv("SCI_RAG_DOMAIN_DIR", raising=False)
+        monkeypatch.delenv("SCI_RAG_DATA_DIR", raising=False)
+        reset_settings_cache()
+
+
 async def test_doctor_passes_for_an_offline_project_with_a_corpus(
-    clean_tables, local_embedder
+    clean_tables, local_embedder, demo_doctor_env
 ) -> None:  # type: ignore[no-untyped-def]
     """The state the wizard writes for `credentials: offline` is not a failure.
 
@@ -192,7 +226,7 @@ async def test_doctor_catches_dimension_mismatch(clean_tables, monkeypatch) -> N
         reset_settings_cache()
 
 
-async def test_the_domain_coherence_rows_appear(clean_tables) -> None:  # type: ignore[no-untyped-def]
+async def test_the_domain_coherence_rows_appear(clean_tables, demo_doctor_env) -> None:  # type: ignore[no-untyped-def]
     """The shipped profile is the reference the new rows are calibrated against."""
     await _stamp_alembic_revision()
 
@@ -204,7 +238,7 @@ async def test_the_domain_coherence_rows_appear(clean_tables) -> None:  # type: 
 
 
 async def test_ground_truth_is_checked_against_the_ingested_corpus(
-    clean_tables, local_embedder
+    clean_tables, local_embedder, demo_doctor_env
 ) -> None:  # type: ignore[no-untyped-def]
     """Only meaningful once documents exist, which is why it lives down here."""
     await _stamp_alembic_revision()
@@ -217,7 +251,7 @@ async def test_ground_truth_is_checked_against_the_ingested_corpus(
 
 
 async def test_a_reference_title_that_matches_nothing_is_flagged(
-    clean_tables, local_embedder
+    clean_tables, local_embedder, demo_doctor_env
 ) -> None:  # type: ignore[no-untyped-def]
     """A title that resolves to no document scores zero forever, and in the
     report that is indistinguishable from a retrieval failure."""
@@ -235,7 +269,7 @@ async def test_a_reference_title_that_matches_nothing_is_flagged(
     assert "reference title" in checks["ground truth vs corpus"].detail
 
 
-async def test_the_manifest_row_is_absent_without_a_manifest(clean_tables) -> None:  # type: ignore[no-untyped-def]
+async def test_the_manifest_row_is_absent_without_a_manifest(clean_tables, demo_doctor_env) -> None:  # type: ignore[no-untyped-def]
     """A project that ingests by folder never writes one; that is not a finding."""
     await _stamp_alembic_revision()
 

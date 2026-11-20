@@ -17,7 +17,6 @@ import pytest
 
 from sci_rag.answer import AnswerEngine
 from sci_rag.db import get_session_factory
-from sci_rag.domain import load_domain
 from sci_rag.evals import (
     DEFAULT_ABLATIONS,
     load_seed_questions,
@@ -32,7 +31,7 @@ from sci_rag.retrieve import Retriever
 pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).parents[2]
-DOMAIN_DIR = REPO_ROOT / "domain"
+DEMO_QUESTIONS = REPO_ROOT / "data" / "demo" / "eval_seed_questions.jsonl"
 
 
 class SmokeLLM(LLMClient):
@@ -64,10 +63,10 @@ async def demo_corpus(clean_tables, local_embedder):  # type: ignore[no-untyped-
     return report
 
 
-async def test_smoke_retrieval_clears_the_bar(demo_corpus, local_embedder):  # type: ignore[no-untyped-def]
-    questions = load_seed_questions(DOMAIN_DIR / "eval_seed_questions.jsonl")
+async def test_smoke_retrieval_clears_the_bar(demo_corpus, demo_domain, local_embedder):  # type: ignore[no-untyped-def]
+    questions = load_seed_questions(DEMO_QUESTIONS)
     retriever = Retriever(
-        domain=load_domain(DOMAIN_DIR),
+        domain=demo_domain,
         embedder=local_embedder,
         llm=SmokeLLM(),
         session_factory=get_session_factory(),
@@ -79,10 +78,10 @@ async def test_smoke_retrieval_clears_the_bar(demo_corpus, local_embedder):  # t
     assert metrics["mrr"] >= 0.35, f"retrieval smoke regressed: {metrics}"
 
 
-async def test_smoke_ablations_run_every_config(demo_corpus, local_embedder):  # type: ignore[no-untyped-def]
-    questions = load_seed_questions(DOMAIN_DIR / "eval_seed_questions.jsonl")[:4]
+async def test_smoke_ablations_run_every_config(demo_corpus, demo_domain, local_embedder):  # type: ignore[no-untyped-def]
+    questions = load_seed_questions(DEMO_QUESTIONS)[:4]
     retriever = Retriever(
-        domain=load_domain(DOMAIN_DIR),
+        domain=demo_domain,
         embedder=local_embedder,
         llm=SmokeLLM(),
         session_factory=get_session_factory(),
@@ -93,12 +92,14 @@ async def test_smoke_ablations_run_every_config(demo_corpus, local_embedder):  #
         assert result.metrics["n"] == 4.0
 
 
-async def test_smoke_answer_eval_with_blind_judge(demo_corpus, local_embedder, tmp_path):  # type: ignore[no-untyped-def]
-    questions = load_seed_questions(DOMAIN_DIR / "eval_seed_questions.jsonl")[:3]
+async def test_smoke_answer_eval_with_blind_judge(
+    demo_corpus, demo_domain, local_embedder, tmp_path
+):  # type: ignore[no-untyped-def]
+    questions = load_seed_questions(DEMO_QUESTIONS)[:3]
     llm = SmokeLLM()
     engine = AnswerEngine(
         retriever=Retriever(
-            domain=load_domain(DOMAIN_DIR),
+            domain=demo_domain,
             embedder=local_embedder,
             llm=llm,
             session_factory=get_session_factory(),

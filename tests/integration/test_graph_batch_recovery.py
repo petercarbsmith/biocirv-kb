@@ -20,16 +20,14 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import select
+from tests.integration.conftest import build_demo_domain
 
 from sci_rag.db import Chunk, KgEntity, get_session_factory
-from sci_rag.domain import load_domain
 from sci_rag.graph import extract_graph
 from sci_rag.ingest import CorpusEntry, ingest_entries
 from sci_rag.llm import LLMClient
 
 pytestmark = pytest.mark.integration
-
-DOMAIN_DIR = Path(__file__).parents[2] / "domain"
 
 
 def _extraction(passage_count: int) -> str:
@@ -102,7 +100,7 @@ async def test_a_batch_the_model_cannot_answer_whole_is_retried_smaller(ten_chun
     stats = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         batch_size=10,
         rate_limit_s=0,
     )
@@ -135,7 +133,7 @@ async def test_a_chunk_the_model_never_answers_stays_unprocessed(ten_chunks) -> 
     stats = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         batch_size=10,
         rate_limit_s=0,
     )

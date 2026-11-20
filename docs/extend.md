@@ -125,7 +125,7 @@ On Google Cloud, the third row is the path to non-Google partner models. Vertex 
 
 !!! note "Partner model ids are dated examples"
 
-    Partner models come and go on a schedule this project does not control. Every id here and in `.env.example` last answered both ordinary generation and strict JSON calls on **2026-08-30**, from `global`. Google publishes each model's lifecycle on [Vertex AI partner-models](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models).
+    Partner models come and go on a schedule this project does not control. Every id here and in `.env.example` last answered both ordinary generation and strict JSON calls on **2026-08-30**, from `global`. Google publishes each model's lifecycle on [Vertex AI Model Garden](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-garden/explore-models).
 
     Verify your models before using them:
 

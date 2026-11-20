@@ -20,6 +20,7 @@ from scripts.graph_replay import (
     write_candidate,
 )
 from sqlalchemy import func, select, text
+from tests.integration.conftest import build_demo_domain
 
 from sci_rag.db import (
     Chunk,
@@ -29,7 +30,6 @@ from sci_rag.db import (
     KgRelationship,
     get_session_factory,
 )
-from sci_rag.domain import load_domain
 from sci_rag.graph.extractor import ExtractedEntity, ExtractionStats, _upsert_entities
 from sci_rag.ingest import chunk_document, load_manifest, parse_file
 from sci_rag.ingest.ingester import content_hash_for
@@ -37,7 +37,6 @@ from sci_rag.llm import LLMClient
 
 pytestmark = pytest.mark.integration
 
-DOMAIN_DIR = Path(__file__).parents[2] / "domain"
 EXTRACTION_MODEL = "test:scripted-extraction"
 EXTRACTION = json.dumps(
     {
@@ -497,7 +496,7 @@ async def test_refresh_rejects_an_extra_public_demo_document_before_provider_con
             artifact_dir=tmp_path / "artifacts",
             receipt_path=tmp_path / "receipt.json",
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=provider,
             source_commit=_source_commit(manifest_path),
@@ -532,7 +531,7 @@ async def test_refresh_rejects_modified_demo_chunk_before_provider_construction(
             artifact_dir=tmp_path / "artifacts",
             receipt_path=tmp_path / "receipt.json",
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=provider,
             source_commit=_source_commit(manifest_path),
@@ -567,7 +566,7 @@ async def test_refresh_rejects_modified_demo_manifest_metadata_before_provider_c
             artifact_dir=tmp_path / "artifacts",
             receipt_path=tmp_path / "receipt.json",
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=provider,
             source_commit=_source_commit(manifest_path),
@@ -599,7 +598,7 @@ async def test_refresh_rejects_dirty_tracked_demo_source_before_provider_constru
             artifact_dir=tmp_path / "artifacts",
             receipt_path=tmp_path / "receipt.json",
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=provider,
             source_commit=_source_commit(manifest_path),
@@ -631,7 +630,7 @@ async def test_refresh_rejects_dirty_graph_contract_source_before_provider_const
             artifact_dir=tmp_path / "artifacts",
             receipt_path=tmp_path / "receipt.json",
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=provider,
             source_commit=_source_commit(manifest_path),
@@ -663,7 +662,7 @@ async def test_record_and_require_replay_survive_fresh_database_ids(
         artifact_dir=artifact_dir,
         receipt_path=record_receipt,
         session_factory=get_session_factory(),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         extraction_model=EXTRACTION_MODEL,
         llm_factory=ScriptedExtractionLLM,
         source_commit=_source_commit(manifest_path),
@@ -701,7 +700,7 @@ async def test_record_and_require_replay_survive_fresh_database_ids(
         artifact_path=recorded.artifact_path,
         receipt_path=replay_receipt,
         session_factory=get_session_factory(),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         extraction_model=EXTRACTION_MODEL,
         llm_factory=forbidden_provider,
         manifest_path=manifest_path,
@@ -733,7 +732,7 @@ async def test_record_and_require_replay_resolve_ambiguous_aliases_identically(
         artifact_dir=tmp_path / "artifacts",
         receipt_path=tmp_path / "record-receipt.json",
         session_factory=get_session_factory(),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         extraction_model=EXTRACTION_MODEL,
         llm_factory=AmbiguousAliasLLM,
         source_commit=_source_commit(manifest_path),
@@ -756,7 +755,7 @@ async def test_record_and_require_replay_resolve_ambiguous_aliases_identically(
         artifact_path=recorded.artifact_path,
         receipt_path=tmp_path / "replay-receipt.json",
         session_factory=get_session_factory(),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         extraction_model=EXTRACTION_MODEL,
         llm_factory=forbidden_provider,
         manifest_path=manifest_path,
@@ -833,7 +832,7 @@ async def test_refresh_refuses_a_target_outside_the_pristine_public_demo_boundar
             artifact_dir=artifact_dir,
             receipt_path=receipt_path,
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=provider,
             source_commit=_source_commit(manifest_path),
@@ -862,7 +861,7 @@ async def test_require_rejects_identity_drift_without_constructing_a_provider(
         artifact_dir=tmp_path / "artifacts",
         receipt_path=tmp_path / "record-receipt.json",
         session_factory=get_session_factory(),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         extraction_model=EXTRACTION_MODEL,
         llm_factory=ScriptedExtractionLLM,
         source_commit=_source_commit(manifest_path),
@@ -885,7 +884,7 @@ async def test_require_rejects_identity_drift_without_constructing_a_provider(
             artifact_path=recorded.artifact_path,
             receipt_path=tmp_path / "drift-receipt.json",
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model="test:a-different-model",
             llm_factory=forbidden_provider,
             manifest_path=manifest_path,
@@ -915,7 +914,7 @@ async def test_failed_refresh_writes_neither_candidate_nor_receipt(
             artifact_dir=artifact_dir,
             receipt_path=receipt_path,
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=InvalidExtractionLLM,
             source_commit=_source_commit(manifest_path),
@@ -941,7 +940,7 @@ async def test_off_mode_counts_live_calls_without_writing_an_artifact(
         mode="off",
         receipt_path=receipt_path,
         session_factory=get_session_factory(),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         extraction_model=EXTRACTION_MODEL,
         llm_factory=ScriptedExtractionLLM,
         batch_size=2,
@@ -966,7 +965,7 @@ async def test_require_rejects_an_artifact_that_declares_failed_batches(
         artifact_dir=tmp_path / "recorded",
         receipt_path=tmp_path / "record-receipt.json",
         session_factory=get_session_factory(),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         extraction_model=EXTRACTION_MODEL,
         llm_factory=ScriptedExtractionLLM,
         source_commit=_source_commit(manifest_path),
@@ -993,7 +992,7 @@ async def test_require_rejects_an_artifact_that_declares_failed_batches(
             artifact_path=incomplete_path,
             receipt_path=tmp_path / "incomplete-receipt.json",
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model=EXTRACTION_MODEL,
             llm_factory=forbidden_provider,
             manifest_path=manifest_path,
@@ -1020,7 +1019,7 @@ async def test_refresh_rejects_a_mislabeled_provider_before_its_first_call(
             artifact_dir=artifact_dir,
             receipt_path=receipt_path,
             session_factory=get_session_factory(),
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             extraction_model="test:mislabeled-model",
             llm_factory=lambda: provider,
             source_commit=_source_commit(manifest_path),

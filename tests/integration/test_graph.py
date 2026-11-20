@@ -12,17 +12,15 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
+from tests.integration.conftest import build_demo_domain
 
 from sci_rag.db import Chunk, KgCommunity, KgEntity, KgRelationship, get_session_factory
-from sci_rag.domain import load_domain
 from sci_rag.graph import build_communities, extract_graph, resolve_entities
 from sci_rag.ingest import CorpusEntry, ingest_entries
 from sci_rag.llm import LLMClient
 from sci_rag.retrieve import RetrievalScope, Retriever
 
 pytestmark = pytest.mark.integration
-
-DOMAIN_DIR = Path(__file__).parents[2] / "domain"
 
 EXTRACTION = {
     "entities": [
@@ -127,7 +125,7 @@ async def _build_graph(corpus, local_embedder, llm) -> None:  # type: ignore[no-
     await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         rate_limit_s=0,
     )
 
@@ -167,7 +165,7 @@ async def test_extraction_is_incremental_and_duplicate_safe(clean_tables, corpus
     second = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         rate_limit_s=0,
     )
     assert second.chunks_processed == 0
@@ -175,7 +173,7 @@ async def test_extraction_is_incremental_and_duplicate_safe(clean_tables, corpus
     third = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         reprocess_all=True,
         rate_limit_s=0,
     )
@@ -200,7 +198,7 @@ async def test_reextraction_merges_aliases_and_keeps_higher_confidence(
     await extract_graph(
         session_factory=get_session_factory(),
         llm=ScriptedLLM(extraction=second_payload),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         reprocess_all=True,
         rate_limit_s=0,
     )
@@ -210,7 +208,7 @@ async def test_reextraction_merges_aliases_and_keeps_higher_confidence(
     await extract_graph(
         session_factory=get_session_factory(),
         llm=ScriptedLLM(extraction=lower_payload),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         reprocess_all=True,
         rate_limit_s=0,
     )
@@ -273,7 +271,7 @@ async def test_reextraction_through_tombstone_enriches_canonical_entity(
     stats = await extract_graph(
         session_factory=get_session_factory(),
         llm=ScriptedLLM(extraction=payload),
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         rate_limit_s=0,
     )
     assert stats.batches_failed == 0
@@ -334,7 +332,7 @@ async def test_graph_layer_reaches_evidence_and_new_fields_preserve_baseline(
     baseline_llm = ScriptedLLM(query_entities=["biogas"], extraction=old_format)
     await _build_graph(corpus, local_embedder, baseline_llm)
     baseline_retriever = Retriever(
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         embedder=local_embedder,
         llm=baseline_llm,
         session_factory=get_session_factory(),
@@ -347,12 +345,12 @@ async def test_graph_layer_reaches_evidence_and_new_fields_preserve_baseline(
     await extract_graph(
         session_factory=get_session_factory(),
         llm=enhanced_llm,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         reprocess_all=True,
         rate_limit_s=0,
     )
     enhanced_retriever = Retriever(
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         embedder=local_embedder,
         llm=enhanced_llm,
         session_factory=get_session_factory(),
@@ -376,7 +374,7 @@ async def test_communities_build_and_serve_unrestricted_queries(
         session_factory=get_session_factory(),
         llm=llm,
         embedder=local_embedder,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         min_size=2,
     )
     assert stats.communities_created >= 1
@@ -387,7 +385,7 @@ async def test_communities_build_and_serve_unrestricted_queries(
     assert missing_embedding == 0
 
     retriever = Retriever(
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         embedder=local_embedder,
         llm=llm,
         session_factory=get_session_factory(),
@@ -422,7 +420,7 @@ async def test_rebuilding_communities_replaces_rather_than_appends(
             session_factory=get_session_factory(),
             llm=llm,
             embedder=local_embedder,
-            domain=load_domain(DOMAIN_DIR),
+            domain=build_demo_domain(),
             min_size=2,
         )
     async with get_session_factory()() as session:
@@ -431,7 +429,7 @@ async def test_rebuilding_communities_replaces_rather_than_appends(
         session_factory=get_session_factory(),
         llm=llm,
         embedder=local_embedder,
-        domain=load_domain(DOMAIN_DIR),
+        domain=build_demo_domain(),
         min_size=2,
     )
     async with get_session_factory()() as session:
