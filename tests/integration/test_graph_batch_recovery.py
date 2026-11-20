@@ -20,7 +20,6 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import select
-from tests.integration.conftest import build_demo_domain
 
 from sci_rag.db import Chunk, KgEntity, get_session_factory
 from sci_rag.graph import extract_graph
@@ -93,14 +92,16 @@ async def ten_chunks(clean_tables, local_embedder, tmp_path: Path):  # type: ign
     await ingest_entries(entries, embedder=local_embedder)
 
 
-async def test_a_batch_the_model_cannot_answer_whole_is_retried_smaller(ten_chunks) -> None:  # type: ignore[no-untyped-def]
+async def test_a_batch_the_model_cannot_answer_whole_is_retried_smaller(
+    ten_chunks, demo_domain
+) -> None:  # type: ignore[no-untyped-def]
     """Ten chunks, a model that can only answer five, and no manual override."""
     llm = TruncatingLLM(max_passages=5)
 
     stats = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         batch_size=10,
         rate_limit_s=0,
     )
@@ -121,7 +122,7 @@ async def test_a_batch_the_model_cannot_answer_whole_is_retried_smaller(ten_chun
     assert entities
 
 
-async def test_a_chunk_the_model_never_answers_stays_unprocessed(ten_chunks) -> None:  # type: ignore[no-untyped-def]
+async def test_a_chunk_the_model_never_answers_stays_unprocessed(ten_chunks, demo_domain) -> None:  # type: ignore[no-untyped-def]
     """Recovery is bounded. A single chunk that still fails is not guessed at.
 
     Splitting stops at one, the chunk keeps its null stamp so a later run
@@ -133,7 +134,7 @@ async def test_a_chunk_the_model_never_answers_stays_unprocessed(ten_chunks) -> 
     stats = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         batch_size=10,
         rate_limit_s=0,
     )

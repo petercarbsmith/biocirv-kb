@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
-from tests.integration.conftest import build_demo_domain
 
 from sci_rag.db import Chunk, KgCommunity, KgEntity, KgRelationship, get_session_factory
 from sci_rag.graph import build_communities, extract_graph, resolve_entities
@@ -120,19 +119,21 @@ def corpus(tmp_path: Path) -> list[CorpusEntry]:
     ]
 
 
-async def _build_graph(corpus, local_embedder, llm) -> None:  # type: ignore[no-untyped-def]
+async def _build_graph(corpus, local_embedder, llm, demo_domain) -> None:  # type: ignore[no-untyped-def]
     await ingest_entries(corpus, embedder=local_embedder)
     await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         rate_limit_s=0,
     )
 
 
-async def test_extraction_populates_graph_with_provenance(clean_tables, corpus, local_embedder):  # type: ignore[no-untyped-def]
+async def test_extraction_populates_graph_with_provenance(
+    clean_tables, corpus, local_embedder, demo_domain
+):  # type: ignore[no-untyped-def]
     llm = ScriptedLLM()
-    await _build_graph(corpus, local_embedder, llm)
+    await _build_graph(corpus, local_embedder, llm, demo_domain)
 
     async with get_session_factory()() as session:
         entities = (await session.execute(select(KgEntity))).scalars().all()
@@ -158,14 +159,16 @@ async def test_extraction_populates_graph_with_provenance(clean_tables, corpus, 
     assert unstamped == 0
 
 
-async def test_extraction_is_incremental_and_duplicate_safe(clean_tables, corpus, local_embedder):  # type: ignore[no-untyped-def]
+async def test_extraction_is_incremental_and_duplicate_safe(
+    clean_tables, corpus, local_embedder, demo_domain
+):  # type: ignore[no-untyped-def]
     llm = ScriptedLLM()
-    await _build_graph(corpus, local_embedder, llm)
+    await _build_graph(corpus, local_embedder, llm, demo_domain)
     # Nothing new: a second run processes zero chunks.
     second = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         rate_limit_s=0,
     )
     assert second.chunks_processed == 0
@@ -173,7 +176,7 @@ async def test_extraction_is_incremental_and_duplicate_safe(clean_tables, corpus
     third = await extract_graph(
         session_factory=get_session_factory(),
         llm=llm,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         reprocess_all=True,
         rate_limit_s=0,
     )
@@ -186,11 +189,11 @@ async def test_extraction_is_incremental_and_duplicate_safe(clean_tables, corpus
 
 
 async def test_reextraction_merges_aliases_and_keeps_higher_confidence(
-    clean_tables, corpus, local_embedder
+    clean_tables, corpus, local_embedder, demo_domain
 ) -> None:  # type: ignore[no-untyped-def]
     first_payload = deepcopy(EXTRACTION)
     first_payload["relationships"][0]["confidence"] = 0.55
-    await _build_graph(corpus, local_embedder, ScriptedLLM(extraction=first_payload))
+    await _build_graph(corpus, local_embedder, ScriptedLLM(extraction=first_payload), demo_domain)
 
     second_payload = deepcopy(EXTRACTION)
     second_payload["entities"][0]["aliases"] = ["rice residue"]
@@ -198,7 +201,7 @@ async def test_reextraction_merges_aliases_and_keeps_higher_confidence(
     await extract_graph(
         session_factory=get_session_factory(),
         llm=ScriptedLLM(extraction=second_payload),
-        domain=build_demo_domain(),
+        domain=demo_domain,
         reprocess_all=True,
         rate_limit_s=0,
     )
@@ -208,7 +211,7 @@ async def test_reextraction_merges_aliases_and_keeps_higher_confidence(
     await extract_graph(
         session_factory=get_session_factory(),
         llm=ScriptedLLM(extraction=lower_payload),
-        domain=build_demo_domain(),
+        domain=demo_domain,
         reprocess_all=True,
         rate_limit_s=0,
     )
@@ -225,9 +228,9 @@ async def test_reextraction_merges_aliases_and_keeps_higher_confidence(
 
 
 async def test_reextraction_through_tombstone_enriches_canonical_entity(
-    clean_tables, corpus, local_embedder, tmp_path
+    clean_tables, corpus, local_embedder, tmp_path, demo_domain
 ) -> None:  # type: ignore[no-untyped-def]
-    await _build_graph(corpus, local_embedder, ScriptedLLM())
+    await _build_graph(corpus, local_embedder, ScriptedLLM(), demo_domain)
     async with get_session_factory()() as session:
         winner = await session.scalar(select(KgEntity).where(KgEntity.name == "rice straw"))
         assert winner is not None
@@ -271,7 +274,7 @@ async def test_reextraction_through_tombstone_enriches_canonical_entity(
     stats = await extract_graph(
         session_factory=get_session_factory(),
         llm=ScriptedLLM(extraction=payload),
-        domain=build_demo_domain(),
+        domain=demo_domain,
         rate_limit_s=0,
     )
     assert stats.batches_failed == 0
@@ -299,9 +302,9 @@ async def test_reextraction_through_tombstone_enriches_canonical_entity(
 
 
 async def test_stats_shows_relationship_confidence_distribution(
-    clean_tables, corpus, local_embedder
+    clean_tables, corpus, local_embedder, demo_domain
 ) -> None:  # type: ignore[no-untyped-def]
-    await _build_graph(corpus, local_embedder, ScriptedLLM())
+    await _build_graph(corpus, local_embedder, ScriptedLLM(), demo_domain)
 
     result = subprocess.run(
         [sys.executable, "-m", "sci_rag.cli.main", "stats"],
@@ -321,7 +324,7 @@ async def test_stats_shows_relationship_confidence_distribution(
 
 
 async def test_graph_layer_reaches_evidence_and_new_fields_preserve_baseline(
-    clean_tables, corpus, local_embedder
+    clean_tables, corpus, local_embedder, demo_domain
 ) -> None:  # type: ignore[no-untyped-def]
     old_format = deepcopy(EXTRACTION)
     for entity in old_format["entities"]:
@@ -330,9 +333,9 @@ async def test_graph_layer_reaches_evidence_and_new_fields_preserve_baseline(
         relationship.pop("confidence", None)
 
     baseline_llm = ScriptedLLM(query_entities=["biogas"], extraction=old_format)
-    await _build_graph(corpus, local_embedder, baseline_llm)
+    await _build_graph(corpus, local_embedder, baseline_llm, demo_domain)
     baseline_retriever = Retriever(
-        domain=build_demo_domain(),
+        domain=demo_domain,
         embedder=local_embedder,
         llm=baseline_llm,
         session_factory=get_session_factory(),
@@ -345,12 +348,12 @@ async def test_graph_layer_reaches_evidence_and_new_fields_preserve_baseline(
     await extract_graph(
         session_factory=get_session_factory(),
         llm=enhanced_llm,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         reprocess_all=True,
         rate_limit_s=0,
     )
     enhanced_retriever = Retriever(
-        domain=build_demo_domain(),
+        domain=demo_domain,
         embedder=local_embedder,
         llm=enhanced_llm,
         session_factory=get_session_factory(),
@@ -366,15 +369,15 @@ async def test_graph_layer_reaches_evidence_and_new_fields_preserve_baseline(
 
 
 async def test_communities_build_and_serve_unrestricted_queries(
-    clean_tables, corpus, local_embedder
+    clean_tables, corpus, local_embedder, demo_domain
 ):  # type: ignore[no-untyped-def]
     llm = ScriptedLLM()
-    await _build_graph(corpus, local_embedder, llm)
+    await _build_graph(corpus, local_embedder, llm, demo_domain)
     stats = await build_communities(
         session_factory=get_session_factory(),
         llm=llm,
         embedder=local_embedder,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         min_size=2,
     )
     assert stats.communities_created >= 1
@@ -385,7 +388,7 @@ async def test_communities_build_and_serve_unrestricted_queries(
     assert missing_embedding == 0
 
     retriever = Retriever(
-        domain=build_demo_domain(),
+        domain=demo_domain,
         embedder=local_embedder,
         llm=llm,
         session_factory=get_session_factory(),
@@ -411,16 +414,16 @@ async def test_communities_build_and_serve_unrestricted_queries(
 
 
 async def test_rebuilding_communities_replaces_rather_than_appends(
-    clean_tables, corpus, local_embedder
+    clean_tables, corpus, local_embedder, demo_domain
 ):  # type: ignore[no-untyped-def]
     llm = ScriptedLLM()
-    await _build_graph(corpus, local_embedder, llm)
+    await _build_graph(corpus, local_embedder, llm, demo_domain)
     for _ in range(2):
         await build_communities(
             session_factory=get_session_factory(),
             llm=llm,
             embedder=local_embedder,
-            domain=build_demo_domain(),
+            domain=demo_domain,
             min_size=2,
         )
     async with get_session_factory()() as session:
@@ -429,7 +432,7 @@ async def test_rebuilding_communities_replaces_rather_than_appends(
         session_factory=get_session_factory(),
         llm=llm,
         embedder=local_embedder,
-        domain=build_demo_domain(),
+        domain=demo_domain,
         min_size=2,
     )
     async with get_session_factory()() as session:

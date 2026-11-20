@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 import yaml
 from sqlalchemy import text, update
-from tests.integration.conftest import build_demo_domain
 
 from sci_rag.cli.doctor import _run_checks
 from sci_rag.config import reset_settings_cache
 from sci_rag.db import Document, KgEntity, get_engine, get_session_factory
+from sci_rag.domain import DomainProfile
 from sci_rag.ingest import ingest_entries, load_manifest
 
 pytestmark = pytest.mark.integration
@@ -126,13 +126,12 @@ async def test_doctor_with_corpus_flags_missing_graph(clean_tables, local_embedd
 
 
 @pytest.fixture()
-def demo_doctor_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
+def demo_doctor_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, demo_domain: DomainProfile):  # type: ignore[no-untyped-def]
     """Point doctor at the shipped demo domain and an empty data directory."""
     domain_dir = tmp_path / "domain"
     domain_dir.mkdir()
-    demo = build_demo_domain()
     (domain_dir / "domain.yaml").write_text(
-        yaml.safe_dump(demo.config.model_dump(mode="json"), sort_keys=False),
+        yaml.safe_dump(demo_domain.config.model_dump(mode="json"), sort_keys=False),
         encoding="utf-8",
     )
     shutil.copy2(
