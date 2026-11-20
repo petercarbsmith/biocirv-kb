@@ -1,11 +1,15 @@
-from pathlib import Path
-
 import pytest
 
-from sci_rag.domain import load_domain
+from sci_rag.domain import DomainProfile
 from sci_rag.graph import detect_communities, parse_extraction
 
-DOMAIN = load_domain(Path(__file__).parents[2] / "domain")
+DOMAIN: DomainProfile
+
+
+@pytest.fixture(autouse=True)
+def _use_demo_domain(demo_domain: DomainProfile) -> None:
+    global DOMAIN
+    DOMAIN = demo_domain
 
 
 def test_parse_extraction_keeps_valid_and_canonicalizes_types() -> None:

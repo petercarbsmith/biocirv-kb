@@ -16,6 +16,10 @@ def _make_copy(tmp_path: Path) -> Path:
     shutil.copy(REPO_ROOT / "scripts" / "init_domain.py", copy / "scripts" / "init_domain.py")
     shutil.copy(REPO_ROOT / "pyproject.toml", copy / "pyproject.toml")
     shutil.copytree(REPO_ROOT / "domain", copy / "domain")
+    (copy / "domain" / "domain.yaml").write_text(
+        'name: "My Scientific KB"\ndescription: >\n  A short description of your domain.\n',
+        encoding="utf-8",
+    )
     return copy
 
 
