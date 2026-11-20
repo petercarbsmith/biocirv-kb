@@ -108,8 +108,18 @@ def _offline_project(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
+def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, demo_domain):  # type: ignore[no-untyped-def]
+    import yaml
+
     root = _project(tmp_path)
+    (root / "domain" / "domain.yaml").write_text(
+        yaml.safe_dump(demo_domain.config.model_dump(mode="json"), sort_keys=False),
+        encoding="utf-8",
+    )
+    shutil.copy2(
+        REPO_ROOT / "data" / "demo" / "eval_seed_questions.jsonl",
+        root / "domain" / "eval_seed_questions.jsonl",
+    )
     _offline_project(root, monkeypatch)
     yield root
     reset_settings_cache()

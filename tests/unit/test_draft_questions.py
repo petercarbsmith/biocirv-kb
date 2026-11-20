@@ -99,8 +99,8 @@ def _questions(*rows: dict) -> list[SeedQuestion]:
     return [SeedQuestion.model_validate(row) for row in rows]
 
 
-def test_the_prompt_carries_the_ontology_and_the_passages() -> None:
-    domain = load_domain(DOMAIN_DIR)
+def test_the_prompt_carries_the_ontology_and_the_passages(demo_domain) -> None:  # type: ignore[no-untyped-def]
+    domain = demo_domain
     prompt = render_prompt(domain, sample=_SAMPLE, count=7)
 
     assert domain.name in prompt

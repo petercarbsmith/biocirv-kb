@@ -141,6 +141,30 @@ markers = [
   "cloud: needs Google credentials; skipped by default in CI",
   "docs_render: needs a built site/ and a Playwright browser (see `make docs-geometry`)",
 ]
+# Pruned cloud-db assets and upstream sci-rag-kit template/site checks do not apply to biocirv-kb.
+addopts = [
+  "--ignore=tests/unit/test_cloud_postgres_script.py",
+  "--ignore=tests/unit/test_database_backends.py",
+  "--ignore=tests/unit/test_demo_target_ground_truth.py",
+  "--ignore=tests/unit/test_dev_database_terraform.py",
+  "--ignore=tests/unit/test_doc_renderers.py",
+  "--ignore=tests/unit/test_docs_database_contract.py",
+  "--ignore=tests/unit/test_docs_onboarding.py",
+  "--ignore=tests/unit/test_docs_redirects.py",
+  "--ignore=tests/unit/test_docs_shipped_defaults.py",
+  "--ignore=tests/unit/test_docs_site_copy.py",
+  "--ignore=tests/unit/test_generated_projects_workflow.py",
+  "--ignore=tests/unit/test_partner_model_freshness.py",
+  "--ignore=tests/unit/test_public_api.py",
+  "--ignore=tests/unit/test_release_version_claims.py",
+  "--ignore=tests/unit/test_render_benchmarks.py",
+  "--ignore=tests/unit/test_scaffold_apply.py",
+  "--ignore=tests/unit/test_scaffold_docker_free_postgres.py",
+  "--ignore=tests/unit/test_scaffold_fetch.py",
+  "--ignore=tests/unit/test_scaffold_manifests.py",
+  "--ignore=tests/unit/test_scaffold_runner_coherence.py",
+  "--ignore=tests/unit/test_scaffold_runner_profiles.py",
+]
 
 [tool.coverage.run]
 source = ["src/sci_rag"]

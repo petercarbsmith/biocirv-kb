@@ -143,8 +143,8 @@ def test_an_empty_draft_is_rejected() -> None:
         parse_reply(json.dumps({"entity_types": [], "relation_types": [], "query_classes": []}))
 
 
-def test_a_refinement_adds_and_removes_against_the_current_ontology() -> None:
-    current = load_domain(DOMAIN_DIR).config
+def test_a_refinement_adds_and_removes_against_the_current_ontology(demo_domain) -> None:  # type: ignore[no-untyped-def]
+    current = demo_domain.config
     assert any(e.name == "Equipment" for e in current.entity_types)
 
     revised = apply_refinement(current, parse_reply(_REFINE_REPLY))

@@ -9,21 +9,18 @@ decision carries human-readable reasons; nothing here is a black box.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
-from sci_rag.domain import load_domain
+from sci_rag.domain import DomainProfile
 from sci_rag.evals.retrieval_eval import DEFAULT_ABLATIONS
 from sci_rag.llm import MockLLM
 from sci_rag.retrieve.router import RoutingDecision, route
 
-DOMAIN_DIR = Path(__file__).parents[2] / "domain"
 
-
-@pytest.fixture(scope="module")
-def domain():  # type: ignore[no-untyped-def]
-    return load_domain(DOMAIN_DIR)
+@pytest.fixture()
+def domain(demo_domain: DomainProfile) -> DomainProfile:
+    return demo_domain
 
 
 class TestHeuristics:
